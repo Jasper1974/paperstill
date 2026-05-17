@@ -661,6 +661,7 @@ function stopSearch(){
   document.getElementById('searchBtn').disabled=false;
   document.getElementById('discoverLoading').style.display='none';
 }
+function initTags(){
   document.getElementById('quickTags').innerHTML=QTAGS_LABELS.map(function(label,idx){
     var dir=ALL_DIRS[idx]||label;
     return '<button class="qtag" onclick="useTag(this.dataset.t)" data-t="'+dir+'">'+label+'</button>';
