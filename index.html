@@ -240,6 +240,35 @@ body {
 .gen-lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--teal); font-family: 'DM Mono', monospace; margin-bottom: 10px; display: block; }
 .gen-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 
+/* File Upload */
+.ref-section { margin-bottom: 16px; }
+.ref-label { font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text2); font-family: 'DM Mono', monospace; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.ref-dropzone {
+  border: 1.5px dashed var(--border2); border-radius: 12px;
+  padding: 16px 20px; cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; gap: 12px; background: var(--surface2);
+  position: relative;
+}
+.ref-dropzone:hover, .ref-dropzone.drag-over { border-color: var(--accent); background: #7c6cfc08; }
+.ref-dropzone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.ref-drop-icon { font-size: 22px; flex-shrink: 0; }
+.ref-drop-text { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.ref-drop-text b { color: var(--text); font-size: 13px; }
+.ref-files { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.ref-file-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 12px; font-size: 12px;
+}
+.ref-file-icon { font-size: 16px; flex-shrink: 0; }
+.ref-file-name { flex: 1; color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-file-status { font-size: 11px; font-family: 'DM Mono', monospace; }
+.ref-file-status.ok { color: var(--green); }
+.ref-file-status.err { color: var(--red); }
+.ref-file-status.loading { color: var(--amber); animation: blink-text 1s infinite; }
+.ref-file-remove { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 15px; padding: 0 2px; line-height: 1; flex-shrink: 0; }
+.ref-file-remove:hover { color: var(--red); }
+
 .btn-primary {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 12px 20px; border-radius: 10px; border: none;
@@ -260,13 +289,37 @@ body {
 .btn-secondary:hover { color: var(--text); border-color: var(--accent); }
 
 .gen-indicator {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 16px; background: #7c6cfc0a; border: 1px solid #7c6cfc28;
-  border-radius: 10px; margin-bottom: 14px; font-size: 13px; color: var(--accent);
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px; background: #7c6cfc08; border: 1px solid #7c6cfc30;
+  border-radius: 12px; margin-bottom: 14px; font-size: 13px; color: var(--accent);
 }
-.dots { display: flex; gap: 4px; }
-.dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: dp 1.4s infinite; }
-.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+.gen-icon-wrap {
+  position: relative; width: 36px; height: 36px; flex-shrink: 0;
+}
+.gen-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--accent);
+  animation: spin-ring 1.1s linear infinite;
+}
+.gen-ring-2 {
+  position: absolute; inset: 5px; border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: var(--teal);
+  animation: spin-ring 0.7s linear infinite reverse;
+}
+.gen-core {
+  position: absolute; inset: 11px; border-radius: 50%;
+  background: var(--accent); opacity: 0.9;
+  animation: pulse-core 1.4s ease-in-out infinite;
+}
+@keyframes spin-ring { to { transform: rotate(360deg); } }
+@keyframes pulse-core { 0%,100%{opacity:.5;transform:scale(.7)} 50%{opacity:1;transform:scale(1)} }
+.gen-text-col { display: flex; flex-direction: column; gap: 4px; }
+.gen-status-line { font-size: 13px; font-weight: 600; color: var(--accent); }
+.gen-sub-line { font-size: 11px; color: var(--text2); font-family: 'DM Mono', monospace; animation: blink-text 2s ease-in-out infinite; }
+@keyframes blink-text { 0%,100%{opacity:.5} 50%{opacity:1} }
+.dots { display: none; }
 @keyframes dp{0%,80%,100%{opacity:.3;transform:scale(.8)}40%{opacity:1;transform:scale(1)}}
 
 .out-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -366,7 +419,6 @@ body {
     <span class="nav-icon">⭐</span> 收藏夹
   </button>
   <div class="sidebar-footer">
-    防降权内嵌 ✓<br><br>
     <span id="keyStatus" style="color:var(--red)">⚠ 未设置API Key</span><br>
     <button onclick="showKeyModal()" style="margin-top:6px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:11px;cursor:pointer;width:100%">设置 API Key</button>
   </div>
@@ -446,7 +498,6 @@ body {
     </div>
     <div class="produce-wrap" id="produce-main" style="display:none">
       <div class="panel-title">内容生产</div>
-      <div class="panel-sub">YouTube + TikTok · 中英文四套 · 防降权内嵌</div>
       <div class="selected-bar">
         <div>
           <div class="sb-lbl">当前选题</div>
@@ -455,36 +506,91 @@ body {
         <button class="btn-secondary" onclick="nav('discover')" style="padding:8px 14px;font-size:12px">换题材</button>
       </div>
       <div id="safetyBox"></div>
-      <div id="genArea">
+
+      <!-- REFERENCE FILES UPLOAD -->
+      <div class="ref-section">
+        <div class="ref-label">
+          <span>📎</span> 背景资料（可选，最多3个文件）
+        </div>
+        <div class="ref-dropzone" id="refDropzone"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="handleRefDrop(event)">
+          <input type="file" id="refFileInput" multiple accept=".pdf,.doc,.docx,.txt,.md,.mmd,.mermaid,.png,.jpg,.jpeg,.webp,.gif" onchange="handleRefFiles(this.files)">
+          <div class="ref-drop-icon">📂</div>
+          <div class="ref-drop-text">
+            <b>点击选择或拖拽文件</b><br>
+            PDF · Word · TXT · MD · Mermaid · PNG · JPG · WEBP · GIF
+          </div>
+        </div>
+        <div class="ref-files" id="refFileList"></div>
+      </div>
+
+      <!-- BATCH 1: YouTube scripts -->
+      <div id="genArea1">
         <div class="gen-card">
-          <span class="gen-lbl">将生成</span>
+          <span class="gen-lbl">第一步</span>
           <div class="gen-tags">
             <span class="badge" style="border-color:#7c6cfc40;color:var(--accent)">YouTube 中文 8-10min</span>
+            <span class="badge" style="border-color:#4fd1c540;color:var(--teal)">YouTube English 8-10min</span>
+          </div>
+          <button class="btn-primary full" id="genBtn1" onclick="generateBatch1()">✦ 生成 YouTube 脚本</button>
+        </div>
+      </div>
+      <div id="genLoading1" style="display:none">
+        <div class="gen-indicator">
+          <div class="gen-icon-wrap"><div class="gen-ring"></div><div class="gen-ring-2"></div><div class="gen-core"></div></div>
+          <div class="gen-text-col">
+            <div class="gen-status-line">正在生成 YouTube 脚本</div>
+            <div class="gen-sub-line" id="genSubLine1">构建脚本结构...</div>
+          </div>
+        </div>
+      </div>
+      <div id="outputArea1" style="display:none">
+        <div class="out-hdr">
+          <span style="font-size:12px;color:var(--text2)" id="wordCount1"></span>
+          <button class="copy-btn" id="copyBtn1" onclick="copyOutput(1)">复制</button>
+        </div>
+        <div class="output-box" id="outputBox1"></div>
+        <div style="margin-top:8px;display:flex;justify-content:flex-end">
+          <button class="btn-secondary" style="font-size:12px;padding:7px 14px" onclick="resetBatch(1)">重新生成</button>
+        </div>
+      </div>
+
+      <!-- BATCH 2: TikTok + images -->
+      <div id="genArea2" style="margin-top:12px">
+        <div class="gen-card">
+          <span class="gen-lbl">第二步</span>
+          <div class="gen-tags">
             <span class="badge" style="border-color:#7c6cfc40;color:var(--accent)">TikTok 中文 60s</span>
-            <span class="badge" style="border-color:#4fd1c540;color:var(--teal)">YouTube English</span>
             <span class="badge" style="border-color:#4fd1c540;color:var(--teal)">TikTok English 60s</span>
             <span class="badge b-safe">配图提示词 ×3</span>
-            <span class="badge b-safe">防降权 ✓</span>
           </div>
-          <button class="btn-primary full" onclick="generate()">✦ 生成全平台内容</button>
+          <button class="btn-primary full" id="genBtn2" onclick="generateBatch2()">✦ 生成 TikTok + 配图</button>
         </div>
       </div>
-      <div id="genLoading" style="display:none">
+      <div id="genLoading2" style="display:none;margin-top:12px">
         <div class="gen-indicator">
-          <div class="dots"><span></span><span></span><span></span></div>
-          AI 正在生成，请稍候...
+          <div class="gen-icon-wrap"><div class="gen-ring"></div><div class="gen-ring-2"></div><div class="gen-core"></div></div>
+          <div class="gen-text-col">
+            <div class="gen-status-line">正在生成 TikTok 脚本</div>
+            <div class="gen-sub-line" id="genSubLine2">提炼核心钩子...</div>
+          </div>
         </div>
       </div>
-      <div id="outputArea" style="display:none">
+      <div id="outputArea2" style="display:none;margin-top:12px">
         <div class="out-hdr">
-          <span style="font-size:12px;color:var(--text2)" id="wordCount"></span>
-          <button class="copy-btn" id="copyBtn" onclick="copyAll()">复制全部</button>
+          <span style="font-size:12px;color:var(--text2)" id="wordCount2"></span>
+          <button class="copy-btn" id="copyBtn2" onclick="copyOutput(2)">复制</button>
         </div>
-        <div class="output-box" id="outputBox"></div>
-        <div class="btn-row">
-          <button class="btn-secondary" onclick="resetGen()">重新生成</button>
-          <button class="btn-primary" onclick="nav('publish')">进入发布清单 →</button>
+        <div class="output-box" id="outputBox2"></div>
+        <div style="margin-top:8px;display:flex;justify-content:flex-end">
+          <button class="btn-secondary" style="font-size:12px;padding:7px 14px" onclick="resetBatch(2)">重新生成</button>
         </div>
+      </div>
+
+      <div id="publishRow" style="display:none;margin-top:16px">
+        <button class="btn-primary full" onclick="nav('publish')">进入发布清单 →</button>
       </div>
     </div>
   </div>
@@ -871,12 +977,26 @@ async function callClaude(system,userMsg,maxTokens){
 }
 
 async function callClaudeStream(system,userMsg,onChunk){
+  return callClaudeStreamWithImages(system,userMsg,[],onChunk);
+}
+
+async function callClaudeStreamWithImages(system,userMsg,imageBlocks,onChunk){
   var key=getApiKey();
   if(!key){showKeyModal();throw new Error('请先设置API Key');}
   var proxy=getProxyUrl();
+  // Build user content: text + optional images
+  var userContent;
+  if(imageBlocks&&imageBlocks.length>0){
+    userContent=imageBlocks.map(function(img){
+      return {type:'image',source:{type:'base64',media_type:img.mediaType,data:img.b64}};
+    });
+    userContent.push({type:'text',text:userMsg+(imageBlocks.length?' (请结合上方图片中的信息一并参考)':'')});
+  }else{
+    userContent=userMsg;
+  }
   var body=JSON.stringify({
     model:getApiModel(),max_tokens:8000,stream:true,
-    messages:[{role:'system',content:system},{role:'user',content:userMsg}]
+    messages:[{role:'system',content:system},{role:'user',content:userContent}]
   });
   var res;
   if(proxy){
@@ -1703,20 +1823,183 @@ function updateProduce(){
   resetGen();
 }
 function resetGen(){
-  document.getElementById('genArea').style.display='block';
-  document.getElementById('genLoading').style.display='none';
-  document.getElementById('outputArea').style.display='none';
+  refFiles=[];
+  renderRefFiles();
+  resetBatch(1);resetBatch(2);
+  document.getElementById('publishRow').style.display='none';
   outputFull='';
 }
-async function generate(){
-  if(!selectedTopic)return;
-  document.getElementById('genArea').style.display='none';
-  document.getElementById('genLoading').style.display='block';
-  document.getElementById('outputArea').style.display='none';
-  var t=selectedTopic;
-  var srcAb=(t.srcPaper&&t.srcPaper.abstract)?'Source finding: '+t.srcPaper.abstract:'';
-  var warnI=t.safety_level==='warn'?'IMPORTANT: This is preliminary/animal research. Never imply definitive human causation. Emphasize research stage clearly.':'';
-  var docStyle='You are an award-winning science documentary narrator. '
+/* ═══════════════════════════════════════════
+   REFERENCE FILES
+═══════════════════════════════════════════ */
+var refFiles=[];  // [{name, type, text?, b64?, mediaType?, status}]
+
+var FILE_ICONS={pdf:'📄',doc:'📝',docx:'📝',txt:'📃',md:'📋',mmd:'🗺',mermaid:'🗺',png:'🖼',jpg:'🖼',jpeg:'🖼',webp:'🖼',gif:'🖼'};
+var IMAGE_TYPES=['png','jpg','jpeg','webp','gif'];
+var TEXT_TYPES=['txt','md','mmd','mermaid'];
+
+function getExt(name){ return (name.split('.').pop()||'').toLowerCase(); }
+
+function handleRefDrop(e){
+  e.preventDefault();
+  document.getElementById('refDropzone').classList.remove('drag-over');
+  handleRefFiles(e.dataTransfer.files);
+}
+
+function handleRefFiles(fileList){
+  var arr=Array.from(fileList);
+  var remaining=3-refFiles.length;
+  if(remaining<=0){showToast('最多上传3个文件');return;}
+  arr.slice(0,remaining).forEach(function(f){ addRefFile(f); });
+  if(arr.length>remaining) showToast('最多3个文件，已忽略多余部分');
+  // reset input so same file can be re-added after removal
+  document.getElementById('refFileInput').value='';
+}
+
+function addRefFile(file){
+  var ext=getExt(file.name);
+  var allowed=['pdf','doc','docx','txt','md','mmd','mermaid','png','jpg','jpeg','webp','gif'];
+  if(!allowed.includes(ext)){showToast('不支持的格式: .'+ext);return;}
+  var id='rf_'+Date.now()+'_'+Math.random().toString(36).slice(2,6);
+  var entry={id:id,name:file.name,ext:ext,status:'loading',text:null,b64:null,mediaType:null};
+  refFiles.push(entry);
+  renderRefFiles();
+  extractFile(file,entry).then(function(){ renderRefFiles(); }).catch(function(err){
+    entry.status='err';entry.errMsg=err.message||'提取失败';renderRefFiles();
+  });
+}
+
+async function extractFile(file,entry){
+  var ext=entry.ext;
+  if(IMAGE_TYPES.includes(ext)){
+    var b64=await fileToBase64(file);
+    entry.b64=b64;
+    entry.mediaType=file.type||'image/'+ext;
+    entry.status='ok';
+    return;
+  }
+  if(TEXT_TYPES.includes(ext)){
+    var text=await fileToText(file);
+    entry.text=text;entry.status='ok';return;
+  }
+  if(ext==='pdf'){
+    var text=await extractPdf(file);
+    entry.text=text;entry.status='ok';return;
+  }
+  if(ext==='doc'||ext==='docx'){
+    var text=await extractDocx(file);
+    entry.text=text;entry.status='ok';return;
+  }
+  throw new Error('未知格式');
+}
+
+function fileToText(file){
+  return new Promise(function(res,rej){
+    var r=new FileReader();
+    r.onload=function(e){res(e.target.result);};
+    r.onerror=function(){rej(new Error('读取失败'));};
+    r.readAsText(file,'UTF-8');
+  });
+}
+
+function fileToBase64(file){
+  return new Promise(function(res,rej){
+    var r=new FileReader();
+    r.onload=function(e){res(e.target.result.split(',')[1]);};
+    r.onerror=function(){rej(new Error('读取失败'));};
+    r.readAsDataURL(file);
+  });
+}
+
+function fileToArrayBuffer(file){
+  return new Promise(function(res,rej){
+    var r=new FileReader();
+    r.onload=function(e){res(e.target.result);};
+    r.onerror=function(){rej(new Error('读取失败'));};
+    r.readAsArrayBuffer(file);
+  });
+}
+
+async function extractPdf(file){
+  if(!window.pdfjsLib){
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  var ab=await fileToArrayBuffer(file);
+  var pdf=await window.pdfjsLib.getDocument({data:ab}).promise;
+  var texts=[];
+  var maxPages=Math.min(pdf.numPages,30);
+  for(var i=1;i<=maxPages;i++){
+    var page=await pdf.getPage(i);
+    var content=await page.getTextContent();
+    texts.push(content.items.map(function(s){return s.str;}).join(' '));
+  }
+  return texts.join('\n');
+}
+
+async function extractDocx(file){
+  if(!window.mammoth){
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
+  }
+  var ab=await fileToArrayBuffer(file);
+  var result=await window.mammoth.extractRawText({arrayBuffer:ab});
+  return result.value;
+}
+
+function loadScript(src){
+  return new Promise(function(res,rej){
+    var s=document.createElement('script');s.src=src;
+    s.onload=res;s.onerror=function(){rej(new Error('脚本加载失败: '+src));};
+    document.head.appendChild(s);
+  });
+}
+
+function removeRefFile(id){
+  refFiles=refFiles.filter(function(f){return f.id!==id;});
+  renderRefFiles();
+}
+
+function renderRefFiles(){
+  var el=document.getElementById('refFileList');
+  if(!el)return;
+  el.innerHTML=refFiles.map(function(f){
+    var icon=FILE_ICONS[f.ext]||'📄';
+    var statusHtml='';
+    if(f.status==='loading') statusHtml='<span class="ref-file-status loading">提取中…</span>';
+    else if(f.status==='ok'){
+      var size=f.text?Math.round(f.text.length/100)/10+'k字' : '图片';
+      statusHtml='<span class="ref-file-status ok">✓ '+size+'</span>';
+    } else {
+      statusHtml='<span class="ref-file-status err">✗ '+f.errMsg+'</span>';
+    }
+    return '<div class="ref-file-item">'
+      +'<span class="ref-file-icon">'+icon+'</span>'
+      +'<span class="ref-file-name" title="'+f.name+'">'+f.name+'</span>'
+      +statusHtml
+      +'<button class="ref-file-remove" onclick="removeRefFile(\''+f.id+'\')" title="移除">✕</button>'
+      +'</div>';
+  }).join('');
+}
+
+function buildRefContext(){
+  // Returns {textBlock: string, imageBlocks: [{b64, mediaType}]}
+  var textParts=[];
+  var imageBlocks=[];
+  refFiles.forEach(function(f){
+    if(f.status!=='ok')return;
+    if(f.text!=null){
+      var trimmed=f.text.trim().slice(0,8000); // cap per file
+      if(trimmed) textParts.push('【参考资料: '+f.name+'】\n'+trimmed);
+    }
+    if(f.b64){
+      imageBlocks.push({b64:f.b64,mediaType:f.mediaType,name:f.name});
+    }
+  });
+  return {textBlock:textParts.join('\n\n---\n\n'),imageBlocks:imageBlocks};
+}
+
+function getDocStyle(){
+  return 'You are an award-winning science documentary narrator. '
     +'Your writing is cinematic and rhythmically varied. '
     +'Use vivid metaphors, specific numbers, and human consequences. '
     +'Short punchy sentences for impact. Longer flowing sentences for context. '
@@ -1724,61 +2007,140 @@ async function generate(){
     +'Distinguish correlation from causation. Never overstate findings. '
     +'Chinese content in Chinese with literary flair. English in English with documentary gravitas. '
     +'Strict anti-demotion: use research found/suggests only.';
-  var msg='You are a science documentary narrator writing for YouTube and TikTok.\n\n'
-    +'Topic: '+t.title+'\nEnglish title: '+(t.english_title||'')+'\nPaper: '+(t.paper||'peer-reviewed research')+'\n'
-    +srcAb+'\n'+warnI+'\n\n'
+}
+
+function getTopicContext(refTextBlock){
+  var t=selectedTopic;
+  var srcAb=(t.srcPaper&&t.srcPaper.abstract)?'Source abstract: '+t.srcPaper.abstract:'';
+  var warnI=t.safety_level==='warn'?'IMPORTANT: This is preliminary/animal research. Never imply definitive human causation. Emphasize research stage clearly.':'';
+  var refSection=refTextBlock?'\n\n=== 用户提供的背景参考资料 ===\n请将以下资料中的有效信息（数据、案例、机制补充、专家观点等）自然融入脚本，丰富内容深度。如资料与论文结论有冲突，以论文为准。\n\n'+refTextBlock+'\n=== 参考资料结束 ===\n':'';
+  return 'Topic: '+t.title+'\nEnglish title: '+(t.english_title||'')+'\nPaper: '+(t.paper||'peer-reviewed research')+'\n'
+    +srcAb+'\n'+warnI+refSection+'\n\n'
     +'Anti-demotion rules:\n'
     +'- Use "research found/suggests/indicates" framing only\n'
     +'- Never say cure/treat/proven effective\n'
     +'- Explicitly distinguish correlation from causation\n'
     +'- End with 1-3 practical actionable tips\n'
-    +'- No specific drug dosages\n\n'
-    +'Generate:\n\n'
+    +'- No specific drug dosages\n\n';
+}
+
+function startTimer(subLineId,msgs,interval){
+  var i=0;
+  return setInterval(function(){
+    i=(i+1)%msgs.length;
+    var el=document.getElementById(subLineId);
+    if(el)el.textContent=msgs[i];
+  },interval||2200);
+}
+
+async function generateBatch1(){
+  if(!selectedTopic)return;
+  var key=getApiKey();
+  if(!key){showKeyModal();return;}
+  document.getElementById('genBtn1').disabled=true;
+  document.getElementById('genArea1').style.display='none';
+  document.getElementById('genLoading1').style.display='block';
+  document.getElementById('outputArea1').style.display='none';
+  var timer=startTimer('genSubLine1',['构建脚本结构...','分析论文核心数据...','撰写中文开场钩子...','展开背景叙事...','呈现核心数据...','撰写英文脚本...','打磨措辞与节奏...']);
+  var ref=buildRefContext();
+  var msg=getTopicContext(ref.textBlock)
+    +'Generate ONLY the following two scripts (do not generate TikTok or image prompts):\n\n'
     +'### 1. YouTube Chinese Script (8-10 min)\n'
     +'Structure: Hook15s -> Background -> KeyFindings+Data -> WhyItMatters -> ScientificCaveats -> ActionTips -> Outro\n'
-    +'Add *[Visual: ...]* for each section\n\n'
-    +'### 2. TikTok Chinese Script (60 seconds)\n'
-    +'Spoken style, max 12 chars per sentence, strongest hook first 3 seconds\n\n'
-    +'### 3. YouTube English Script (8-10 min)\n'
-    +'Same structure for English-speaking audience, include *[Visual: ...]*\n\n'
-    +'### 4. TikTok English Script (60 seconds)\n'
-    +'Casual punchy sentences, hook in first 3 seconds\n\n'
-    +'### 5. Image Prompts for Flux/Midjourney (3 images)\n'
-    +'---Cover 16:9---\n[prompt]\n---Data Infographic---\n[prompt]\n---Mechanism or Tips---\n[prompt]';
-
-  var outEl=document.getElementById('outputBox');
-  outEl.textContent='';outputFull='';
-  var key=getApiKey();
-  if(!key){showKeyModal();document.getElementById('genLoading').style.display='none';document.getElementById('genArea').style.display='block';return;}
-  document.getElementById('genLoading').style.display='none';
-  document.getElementById('outputArea').style.display='block';
+    +'Add *[Visual: ...]* for each section. Full length, do not truncate.\n\n'
+    +'### 2. YouTube English Script (8-10 min)\n'
+    +'Same full structure for English-speaking audience. Include *[Visual: ...]*. Do not truncate.';
+  var outEl=document.getElementById('outputBox1');
+  outEl.textContent='';
+  var buf1='';
+  clearInterval(timer);
+  document.getElementById('genLoading1').style.display='none';
+  document.getElementById('outputArea1').style.display='block';
   try{
-    await callClaudeStream(
-      docStyle,
-      msg,
-      function(chunk){outputFull+=chunk;outEl.textContent=outputFull;outEl.scrollTop=outEl.scrollHeight;}
-    );
-    document.getElementById('wordCount').textContent='共'+outputFull.length+'字';
+    await callClaudeStreamWithImages(getDocStyle(),msg,ref.imageBlocks,function(chunk){buf1+=chunk;outEl.textContent=buf1;outEl.scrollTop=outEl.scrollHeight;});
+    outputFull=buf1;
+    document.getElementById('wordCount1').textContent='共'+buf1.length+'字';
+    checkPublishRow();
   }catch(e){
-    document.getElementById('genLoading').style.display='none';
-    document.getElementById('genArea').style.display='block';
+    document.getElementById('genLoading1').style.display='none';
+    document.getElementById('genArea1').style.display='block';
+    document.getElementById('genBtn1').disabled=false;
     alert('生成出错：'+e.message);
   }
 }
-function copyAll(){
-  var btn=document.getElementById('copyBtn');
-  navigator.clipboard.writeText(outputFull).then(function(){
-    btn.textContent='已复制';btn.classList.add('ok');
-    setTimeout(function(){btn.textContent='复制全部';btn.classList.remove('ok');},2000);
+
+async function generateBatch2(){
+  if(!selectedTopic)return;
+  var key=getApiKey();
+  if(!key){showKeyModal();return;}
+  document.getElementById('genBtn2').disabled=true;
+  document.getElementById('genArea2').style.display='none';
+  document.getElementById('genLoading2').style.display='block';
+  document.getElementById('outputArea2').style.display='none';
+  var timer=startTimer('genSubLine2',['提炼核心钩子...','压缩为60秒口播稿...','撰写中文TikTok版...','撰写英文TikTok版...','生成配图提示词...','优化视觉描述...']);
+  var ref=buildRefContext();
+  var msg=getTopicContext(ref.textBlock)
+    +'Generate ONLY the following (do not generate YouTube long scripts):\n\n'
+    +'### 1. TikTok Chinese Script (60 seconds)\n'
+    +'Spoken style, max 12 chars per sentence, strongest hook in first 3 seconds. Mention this is a correlation study, not proof of causation.\n\n'
+    +'### 2. TikTok English Script (60 seconds)\n'
+    +'Casual punchy sentences, hook in first 3 seconds, note correlation vs causation.\n\n'
+    +'### 3. Image Prompts for Flux/Midjourney (3 images)\n'
+    +'---Cover 16:9---\n[detailed cinematic prompt]\n---Data Infographic---\n[detailed prompt]\n---Mechanism or Tips---\n[detailed prompt]';
+  var outEl=document.getElementById('outputBox2');
+  outEl.textContent='';
+  var buf2='';
+  clearInterval(timer);
+  document.getElementById('genLoading2').style.display='none';
+  document.getElementById('outputArea2').style.display='block';
+  try{
+    await callClaudeStreamWithImages(getDocStyle(),msg,ref.imageBlocks,function(chunk){buf2+=chunk;outEl.textContent=buf2;outEl.scrollTop=outEl.scrollHeight;});
+    document.getElementById('wordCount2').textContent='共'+buf2.length+'字';
+    outputFull=(document.getElementById('outputBox1').textContent||'')+'\n\n---\n\n'+buf2;
+    checkPublishRow();
+  }catch(e){
+    document.getElementById('genLoading2').style.display='none';
+    document.getElementById('genArea2').style.display='block';
+    document.getElementById('genBtn2').disabled=false;
+    alert('生成出错：'+e.message);
+  }
+}
+
+function checkPublishRow(){
+  var has1=document.getElementById('outputArea1').style.display!=='none'&&document.getElementById('outputBox1').textContent.length>10;
+  var has2=document.getElementById('outputArea2').style.display!=='none'&&document.getElementById('outputBox2').textContent.length>10;
+  document.getElementById('publishRow').style.display=(has1||has2)?'block':'none';
+}
+
+function resetBatch(n){
+  if(n===1){
+    document.getElementById('outputArea1').style.display='none';
+    document.getElementById('genArea1').style.display='block';
+    document.getElementById('genBtn1').disabled=false;
+  }else{
+    document.getElementById('outputArea2').style.display='none';
+    document.getElementById('genArea2').style.display='block';
+    document.getElementById('genBtn2').disabled=false;
+  }
+  checkPublishRow();
+}
+
+function copyOutput(n){
+  var text=document.getElementById('outputBox'+n).textContent;
+  var btn=document.getElementById('copyBtn'+n);
+  navigator.clipboard.writeText(text).then(function(){
+    btn.textContent='已复制';
+    setTimeout(function(){btn.textContent='复制';},2000);
   }).catch(function(){
     var ta=document.createElement('textarea');
-    ta.value=outputFull;ta.style.cssText='position:fixed;opacity:0';
+    ta.value=text;ta.style.cssText='position:fixed;opacity:0';
     document.body.appendChild(ta);ta.select();document.execCommand('copy');
     document.body.removeChild(ta);
     btn.textContent='已复制';
-    setTimeout(function(){btn.textContent='复制全部';},2000);
+    setTimeout(function(){btn.textContent='复制';},2000);
   });
 }
+
 
 /* ═══════════════════════════════════════════
    PUBLISH CHECKLIST
