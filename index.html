@@ -1482,14 +1482,16 @@ function renderTopics(topics,stats){
       +'<div style="text-align:center;background:var(--bg);border-radius:4px;padding:3px"><b style="color:var(--text2);font-size:12px">'+(s.s6||0)+'</b><div style="font-size:8px;color:var(--text3)">证据/15</div></div>'
       +'<div style="text-align:center;background:var(--bg);border-radius:4px;padding:3px"><b style="color:var(--text3);font-size:12px">'+(s.s7||0)+'</b><div style="font-size:8px;color:var(--text3)">稀缺/5</div></div>'
       +'</div>';
+    var abstractSrc=(t.srcPaper&&t.srcPaper.abstract)?t.srcPaper.abstract:'';
+    var pubmedLink=(t.srcPaper&&t.srcPaper.pmid&&t.srcPaper.pmid.match(/^[0-9]+$/))?'https://pubmed.ncbi.nlm.nih.gov/'+t.srcPaper.pmid+'/':'';
     var detail='<div id="td-'+i+'" style="display:none;padding:10px 12px 4px;border-top:1px solid var(--border);background:var(--bg)">'
-      +(t.english_title?'<div style="font-size:11px;color:var(--text2);margin-bottom:5px;font-style:italic">"'+t.english_title+'"</div>':'')
-      +(t.srcPaper&&t.srcPaper.title?'<div style="font-size:10px;color:var(--text3);margin-bottom:6px;line-height:1.4">'+(t.srcPaper.title.length>100?t.srcPaper.title.slice(0,100)+'...':t.srcPaper.title)+'</div>':'')
-      +(t.srcPaper&&t.srcPaper.abstract?'<div style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.5">'+t.srcPaper.abstract.slice(0,180)+'...</div>':'')
-      +scoreGrid
-      +(t.safety_level==='warn'?'<div style="font-size:11px;color:var(--amber);background:#f59e0b0a;border:1px solid #f59e0b28;border-radius:6px;padding:6px 10px;margin-bottom:8px">⚠ <b>需人工审核</b>：可能为动物实验、小样本、替代医学或特定品牌药物。选用前请核实原文，生成时自动套用谨慎措辞模板。</div>':'')
+      +(t.safety_level==='warn'?'<div style="font-size:11px;color:var(--amber);background:#f59e0b0a;border:1px solid #f59e0b28;border-radius:6px;padding:6px 10px;margin-bottom:8px">⚠ <b>需人工审核</b>：可能为动物实验、小样本、替代医学或特定品牌药物。</div>':'')
+      +'<div id="summary-'+i+'" style="font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:10px;padding:10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">'
+      +(abstractSrc?'<span style="color:var(--text3);font-size:11px">⏳ 正在生成科普摘要…</span>':'<span style="color:var(--text3);font-size:11px">暂无原文摘要</span>')
+      +'</div>'
+      +(pubmedLink?'<div style="margin-bottom:8px"><a href="'+pubmedLink+'" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none">↗ 查看完整论文 (PubMed)</a></div>':'')
       +'<div style="display:flex;gap:8px;margin-bottom:8px">'
-      +'<button onclick="event.stopPropagation();saveFavorite('+i+')" style="flex:1;padding:7px;background:var(--surface2);color:var(--amber);border:1px solid var(--amber)44;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">⭐ 存入收藏</button>'
+      +'<button id="fav-btn-'+i+'" onclick="event.stopPropagation();toggleFavorite('+i+',this)" style="flex:1;padding:7px;background:var(--surface2);color:var(--text2);border:1px solid var(--border2);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer">☆ 收藏</button>'
       +'<button onclick="event.stopPropagation();selectTopic('+i+')" style="flex:2;padding:7px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">选择此题材 →</button>'
       +'</div>'
       +'</div>';
@@ -1534,6 +1536,70 @@ function toggleDetail(i,ev){
   var isOpen=d.style.display!=='none';
   d.style.display=isOpen?'none':'block';
   if(a)a.innerHTML=isOpen?'&#9660;':'&#9650;';
+  if(!isOpen){
+    var t=window._topics&&window._topics[i];
+    var summaryEl=document.getElementById('summary-'+i);
+    if(t&&summaryEl&&!summaryEl._loaded){
+      summaryEl._loaded=true;
+      var abstract=(t.srcPaper&&t.srcPaper.abstract)||'';
+      if(abstract){
+        generateChineseSummary(t,abstract,summaryEl);
+      }else{
+        summaryEl.innerHTML='<span style="color:var(--text3);font-size:11px">暂无原文摘要</span>';
+      }
+    }
+    checkFavState(i);
+  }
+}
+
+async function generateChineseSummary(t,abstract,el){
+  try{
+    el.innerHTML='<span style="color:var(--text3);font-size:11px">AI改写中...</span>';
+    var sys='你是顶级科学传播作家，擅长把晦涩的英文论文摘要改写成让普通中国读者豁然开朗的中文科普段落。风格：BBC纪录片旁白感，有文采有节奏，具体生动，不写废话。严禁夸大结论，保留原有的谨慎程度。直接输出正文，不加标题，200-260字。';
+    var prompt='论文题目：'+t.title+'\n\n英文摘要：\n'+abstract+'\n\n请改写成中文科普段落，帮读者理解：这篇论文发现了什么、怎么发现的、对普通人意味着什么。';
+    var result=await callClaude(sys,prompt,600);
+    el.textContent=result.trim();
+    el.style.color='var(--text)';
+  }catch(e){
+    el.innerHTML='<span style="color:var(--text3);font-size:11px">摘要生成失败: '+e.message+'</span>';
+  }
+}
+
+async function checkFavState(i){
+  var t=window._topics&&window._topics[i];
+  if(!t)return;
+  var btn=document.getElementById('fav-btn-'+i);
+  if(!btn)return;
+  var favs=await getFavorites();
+  var isFav=favs.some(function(f){return f.title===t.title;});
+  if(isFav){
+    btn.textContent='x2B50 已收藏';
+    btn.style.color='var(--amber)';
+    btn.style.borderColor='#f59e0b44';
+  }
+}
+
+async function toggleFavorite(i,btn){
+  var t=window._topics[i];
+  if(!t)return;
+  var favs=await getFavorites();
+  var idx=favs.findIndex(function(f){return f.title===t.title;});
+  if(idx>=0){
+    favs.splice(idx,1);
+    await stSet(SK_FAV,JSON.stringify(favs));
+    btn.textContent='\u2606 收藏';
+    btn.style.color='var(--text2)';
+    btn.style.borderColor='var(--border2)';
+    showToast('已取消收藏');
+  }else{
+    t._savedDate=new Date().toISOString().slice(0,10);
+    favs.unshift(t);
+    await stSet(SK_FAV,JSON.stringify(favs));
+    btn.textContent='\u2B50 已收藏';
+    btn.style.color='var(--amber)';
+    btn.style.borderColor='#f59e0b44';
+    showToast('\u2B50 已存入收藏夹');
+  }
 }
 
 function selectTopic(i){
