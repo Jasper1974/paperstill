@@ -1219,9 +1219,9 @@ function showKeyModal(){
 function closeKeyModal(){document.getElementById('keyModal').style.display='none';}
 function saveKey(){
   var k=document.getElementById('keyInput').value.trim();
-  if(!k||k.indexOf('sk-')<0){
+  if(!k){
     document.getElementById('keyMsg').style.color='var(--red)';
-    document.getElementById('keyMsg').textContent='Key应以sk-开头';return;
+    document.getElementById('keyMsg').textContent='请输入API Key';return;
   }
   localStorage.setItem('claude_api_key',k);
   var b=document.getElementById('baseInput').value.trim();
@@ -1535,21 +1535,12 @@ async function fetchPubMedReal(kw,dStart,dEnd){
 async function fetchPapersViaClaudeStrict(query){
   var cy=new Date().getFullYear();
   var sys='You are a biomedical literature expert. Output ONLY lines starting with PAPER|. Absolutely no other text.';
-  var prompt='List 15 real peer-reviewed papers that are SPECIFICALLY AND EXCLUSIVELY about: "'+query+'"
-
-'
-    +'HARD RULE: Every paper listed MUST be directly about "'+query+'". Papers about other topics are FORBIDDEN.
-'
-    +'Do NOT include papers merely mentioning "'+query+'" as a side note.
-'
-    +'Focus: '+(cy-1)+'-'+cy+' publications with surprising or impactful findings.
-
-'
-    +'Output format (pipe-separated, no other text):
-'
-    +'PAPER|Full title|Journal|Year|PMID or 0|Key finding
-
-'
+  var prompt='List 15 real peer-reviewed papers that are SPECIFICALLY AND EXCLUSIVELY about: "'+query+'"\n\n'
+    +'HARD RULE: Every paper listed MUST be directly about "'+query+'". Papers about other topics are FORBIDDEN.\n'
+    +'Do NOT include papers merely mentioning "'+query+'" as a side note.\n'
+    +'Focus: '+(cy-1)+'-'+cy+' publications with surprising or impactful findings.\n\n'
+    +'Output format (pipe-separated, no other text):\n'
+    +'PAPER|Full title|Journal|Year|PMID or 0|Key finding\n\n'
     +'List exactly 15 papers ONLY about "'+query+'":';
   var key=getApiKey();
   if(!key){showKeyModal();throw new Error('请先设置API Key');}
