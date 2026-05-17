@@ -2053,15 +2053,23 @@ async function generateBatch1(){
   var outEl=document.getElementById('outputBox1');
   outEl.textContent='';
   var buf1='';
-  clearInterval(timer);
-  document.getElementById('genLoading1').style.display='none';
-  document.getElementById('outputArea1').style.display='block';
+  var key2=getApiKey();
+  if(!key2){clearInterval(timer);showKeyModal();document.getElementById('genLoading1').style.display='none';document.getElementById('genArea1').style.display='block';document.getElementById('genBtn1').disabled=false;return;}
   try{
-    await callClaudeStreamWithImages(getDocStyle(),msg,ref.imageBlocks,function(chunk){buf1+=chunk;outEl.textContent=buf1;outEl.scrollTop=outEl.scrollHeight;});
+    await callClaudeStreamWithImages(getDocStyle(),msg,ref.imageBlocks,function(chunk){
+      if(document.getElementById('genLoading1').style.display!=='none'){
+        clearInterval(timer);
+        document.getElementById('genLoading1').style.display='none';
+        document.getElementById('outputArea1').style.display='block';
+      }
+      buf1+=chunk;outEl.textContent=buf1;outEl.scrollTop=outEl.scrollHeight;
+      document.getElementById('wordCount1').textContent='生成中… '+buf1.length+'字';
+    });
     outputFull=buf1;
     document.getElementById('wordCount1').textContent='共'+buf1.length+'字';
     checkPublishRow();
   }catch(e){
+    clearInterval(timer);
     document.getElementById('genLoading1').style.display='none';
     document.getElementById('genArea1').style.display='block';
     document.getElementById('genBtn1').disabled=false;
@@ -2090,15 +2098,23 @@ async function generateBatch2(){
   var outEl=document.getElementById('outputBox2');
   outEl.textContent='';
   var buf2='';
-  clearInterval(timer);
-  document.getElementById('genLoading2').style.display='none';
-  document.getElementById('outputArea2').style.display='block';
+  var key2=getApiKey();
+  if(!key2){clearInterval(timer);showKeyModal();document.getElementById('genLoading2').style.display='none';document.getElementById('genArea2').style.display='block';document.getElementById('genBtn2').disabled=false;return;}
   try{
-    await callClaudeStreamWithImages(getDocStyle(),msg,ref.imageBlocks,function(chunk){buf2+=chunk;outEl.textContent=buf2;outEl.scrollTop=outEl.scrollHeight;});
+    await callClaudeStreamWithImages(getDocStyle(),msg,ref.imageBlocks,function(chunk){
+      if(document.getElementById('genLoading2').style.display!=='none'){
+        clearInterval(timer);
+        document.getElementById('genLoading2').style.display='none';
+        document.getElementById('outputArea2').style.display='block';
+      }
+      buf2+=chunk;outEl.textContent=buf2;outEl.scrollTop=outEl.scrollHeight;
+      document.getElementById('wordCount2').textContent='生成中… '+buf2.length+'字';
+    });
     document.getElementById('wordCount2').textContent='共'+buf2.length+'字';
     outputFull=(document.getElementById('outputBox1').textContent||'')+'\n\n---\n\n'+buf2;
     checkPublishRow();
   }catch(e){
+    clearInterval(timer);
     document.getElementById('genLoading2').style.display='none';
     document.getElementById('genArea2').style.display='block';
     document.getElementById('genBtn2').disabled=false;
