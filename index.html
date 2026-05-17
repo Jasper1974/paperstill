@@ -664,6 +664,7 @@ body {
             <div class="gen-status-line">正在生成 YouTube 脚本</div>
             <div class="gen-sub-line" id="genSubLine1">构建脚本结构...</div>
           </div>
+          <button onclick="stopBatch(1)" style="margin-left:auto;padding:6px 14px;border-radius:7px;background:transparent;border:1px solid var(--red);color:var(--red);font-size:12px;cursor:pointer;flex-shrink:0">■ 停止</button>
         </div>
       </div>
       <div id="outputArea1" style="display:none">
@@ -696,6 +697,7 @@ body {
             <div class="gen-status-line">正在生成 TikTok 脚本</div>
             <div class="gen-sub-line" id="genSubLine2">提炼核心钩子...</div>
           </div>
+          <button onclick="stopBatch(2)" style="margin-left:auto;padding:6px 14px;border-radius:7px;background:transparent;border:1px solid var(--red);color:var(--red);font-size:12px;cursor:pointer;flex-shrink:0">■ 停止</button>
         </div>
       </div>
       <div id="outputArea2" style="display:none;margin-top:12px">
@@ -739,6 +741,11 @@ body {
             </div>
             <button class="btn-primary" id="genBtn3" onclick="generateBatch3()" style="padding:9px 16px;font-size:13px">✦ 生成分镜表</button>
           </div>
+          <!-- 双标签 -->
+          <div style="display:flex;gap:0;margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <button id="sb3Tab-long" onclick="sb3SwitchTab('long')" style="flex:1;padding:8px;font-size:12px;font-weight:600;background:var(--accent);color:#fff;border:none;cursor:pointer;transition:all 0.15s">📹 长视频</button>
+            <button id="sb3Tab-short" onclick="sb3SwitchTab('short')" style="flex:1;padding:8px;font-size:12px;font-weight:600;background:transparent;color:var(--text2);border:none;border-left:1px solid var(--border);cursor:pointer;transition:all 0.15s">📱 短视频 / Shorts</button>
+          </div>
           <div class="sb3-ctrl">
             <div class="sb3-ctrl-row">
               <span class="sb3-label">最短时长</span>
@@ -754,11 +761,16 @@ body {
             </div>
             <div class="sb3-ctrl-row">
               <span class="sb3-label">预设</span>
-              <div class="sb3-presets">
-                <button class="sb3-preset" onclick="sb3SetPreset(5,7,this)">TikTok 5–7min</button>
+              <div class="sb3-presets" id="sb3PresetLong">
+                <button class="sb3-preset" onclick="sb3SetPreset(5,7,this)">YouTube 5–7min</button>
                 <button class="sb3-preset active" onclick="sb3SetPreset(8,12,this)">YouTube 8–12min</button>
                 <button class="sb3-preset" onclick="sb3SetPreset(12,18,this)">深度 12–18min</button>
                 <button class="sb3-preset" onclick="sb3SetPreset(18,22,this)">长片 18–22min</button>
+              </div>
+              <div class="sb3-presets" id="sb3PresetShort" style="display:none">
+                <button class="sb3-preset active" onclick="sb3SetPreset(0.5,1,this)">TikTok 30–60s</button>
+                <button class="sb3-preset" onclick="sb3SetPreset(1,1.5,this)">Shorts 60–90s</button>
+                <button class="sb3-preset" onclick="sb3SetPreset(1.5,3,this)">短片 90s–3min</button>
               </div>
             </div>
             <div class="sb3-ctrl-row">
@@ -869,8 +881,8 @@ var SK_STATE='crawl_state2',SK_PAPERS='paper_db2',SK_SCORED='scored_db2';
 var SCORE_N=60;
 var ALL_DIRS=[
   /* ── 死亡恐惧·最强痛点 ── */
-  'cancer prevention reversal new mechanism 2024 2025',
-  'cancer treatment breakthrough immunotherapy clinical trial 2024',
+  'cancer prevention reversal new mechanism 2025 2026',
+  'cancer treatment breakthrough immunotherapy clinical trial 2025',
   'heart attack hidden risk factor prevention new finding',
   'cardiovascular disease reversal lifestyle intervention evidence',
   'sudden cardiac death warning signs overlooked',
@@ -878,37 +890,37 @@ var ALL_DIRS=[
   'cancer cell death plant compound apoptosis mechanism',
 
   /* ── 衰老与长寿·极强痛点 ── */
-  'longevity aging reversal centenarian mechanism 2024',
+  'longevity aging reversal centenarian mechanism 2025 2026',
   'biological age reversal intervention clinical evidence',
   'senescent cells clearance aging disease reversal',
   'telomere lengthening lifestyle diet surprising finding',
   'autophagy activation longevity food compound',
-  'NAD+ restoration aging muscle brain 2024',
+  'NAD+ restoration aging muscle brain 2025',
   'mitochondria dysfunction aging reversal intervention',
 
   /* ── 阿尔茨海默·认知衰退 ── */
-  'Alzheimer prevention reversal new mechanism 2024 2025',
+  'Alzheimer prevention reversal new mechanism 2025 2026',
   'dementia risk reduction surprising lifestyle factor',
   'memory preservation brain aging intervention evidence',
   'cognitive decline reversal diet exercise clinical trial',
   'brain inflammation neurodegeneration prevention finding',
 
   /* ── 糖尿病·代谢 ── */
-  'type 2 diabetes reversal remission mechanism 2024',
+  'type 2 diabetes reversal remission mechanism 2025',
   'insulin resistance unexpected cause new finding',
   'metabolic syndrome reversal intervention surprising',
-  'obesity root cause mechanism new research 2024',
+  'obesity root cause mechanism new research 2025',
   'blood sugar regulation food timing surprising effect',
 
   /* ── 癌症·日常预防 ── */
   'common food cancer prevention surprising clinical evidence',
   'everyday habit cancer risk reduction mechanism',
-  'cancer screening early detection new method 2024',
+  'cancer screening early detection new method 2025',
   'gut microbiome cancer treatment response prediction',
   'inflammation chronic cancer driver suppression',
 
   /* ── 心脏健康 ── */
-  'heart disease reversal diet intervention evidence 2024',
+  'heart disease reversal diet intervention evidence 2025',
   'coronary artery disease regression clinical trial',
   'blood pressure reduction surprising non-drug intervention',
   'atrial fibrillation hidden trigger new finding',
@@ -916,31 +928,31 @@ var ALL_DIRS=[
 
   /* ── 生育·激素 ── */
   'male fertility decline sperm count cause intervention',
-  'female fertility preservation new finding 2024',
+  'female fertility preservation new finding 2025',
   'endocrine disruptor everyday exposure infertility mechanism',
   'hormonal imbalance hidden environmental cause',
   'testosterone estrogen decline reversal intervention',
 
   /* ── 心理健康 ── */
-  'depression biological mechanism treatment breakthrough 2024',
+  'depression biological mechanism treatment breakthrough 2025',
   'anxiety gut brain axis treatment new evidence',
   'mental health microbiome intervention clinical trial',
   'stress organ damage mechanism reversal intervention',
-  'PTSD treatment breakthrough new mechanism 2024',
+  'PTSD treatment breakthrough new mechanism 2025',
 
   /* ── 饮食健康·广泛共鸣 ── */
   'ultra processed food specific organ damage mechanism',
   'common food unexpected health benefit clinical evidence',
-  'fasting timing meal metabolic surprising effect 2024',
+  'fasting timing meal metabolic surprising effect 2025',
   'protein source longevity mortality surprising finding',
-  'fermented food microbiome immune clinical trial 2024',
+  'fermented food microbiome immune clinical trial 2025',
 
   /* ── 奇趣科学·传播性强·20% ── */
-  'microplastics nanoplastics human organ accumulation harm 2024',
+  'microplastics nanoplastics human organ accumulation harm 2025',
   'everyday chemical household cancer endocrine hidden',
   'common painkiller hidden organ damage surprising finding',
   'sleep deprivation irreversible brain damage mechanism',
-  'plant extract cancer cell death surprising compound 2024'
+  'plant extract cancer cell death surprising compound 2025'
 ];
 var QTAGS_LABELS=[
   '癌症预防逆转','癌症免疫治疗','心脏病隐藏风险','心血管逆转','心源性猝死','中风预防','植物化合物抗癌',
@@ -1064,10 +1076,10 @@ async function advanceCrawlWindow(s,success){
   return s;
 }
 function winLabel(s){
-  if(s.winStart===0)return 'very recent 2024-2025 publications';
-  if(s.winStart<=14)return 'recent 2024 publications';
-  if(s.winStart<=30)return '2024 publications';
-  if(s.winStart<=60)return '2023-2024 publications';
+  if(s.winStart===0)return 'very recent 2025-2026 publications';
+  if(s.winStart<=14)return 'recent 2025-2026 publications';
+  if(s.winStart<=30)return '2025 publications';
+  if(s.winStart<=60)return '2024-2025 publications';
   return '2023 publications';
 }
 
@@ -1204,11 +1216,17 @@ async function callClaudeStream(system,userMsg,onChunk){
   return callClaudeStreamWithImages(system,userMsg,[],onChunk);
 }
 
+// 全局中断控制器
+var _streamAbort = null;
+
+function stopGeneration(){
+  if(_streamAbort){ _streamAbort.abort(); _streamAbort=null; }
+}
+
 async function callClaudeStreamWithImages(system,userMsg,imageBlocks,onChunk){
   var key=getApiKey();
   if(!key){showKeyModal();throw new Error('请先设置API Key');}
   var proxy=getProxyUrl();
-  // Build user content: text + optional images
   var userContent;
   if(imageBlocks&&imageBlocks.length>0){
     userContent=imageBlocks.map(function(img){
@@ -1222,36 +1240,50 @@ async function callClaudeStreamWithImages(system,userMsg,imageBlocks,onChunk){
     model:getApiModel(),max_tokens:8000,stream:true,
     messages:[{role:'system',content:system},{role:'user',content:userContent}]
   });
+  // AbortController
+  _streamAbort=new AbortController();
+  var signal=_streamAbort.signal;
   var res;
-  if(proxy){
-    res=await fetch(proxy,{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':key,
-        'x-base-url':getApiBase()
-      },
-      body:body
-    });
-  }else{
-    var url=getApiBase().replace(/\/+$/,'')+'/chat/completions';
-    res=await fetch(url,{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:body
-    });
+  try{
+    if(proxy){
+      res=await fetch(proxy,{method:'POST',signal:signal,
+        headers:{'Content-Type':'application/json','x-api-key':key,'x-base-url':getApiBase()},body:body});
+    }else{
+      var url=getApiBase().replace(/\/+$/,'')+'/chat/completions';
+      res=await fetch(url,{method:'POST',signal:signal,
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:body});
+    }
+  }catch(e){
+    if(e.name==='AbortError')throw new Error('已手动停止');
+    throw e;
   }
   if(!res.ok){var err=await res.text();throw new Error('API '+res.status+': '+err.slice(0,150));}
   var reader=res.body.getReader();var dec=new TextDecoder();var going=true;
-  while(going){
-    var chunk=await reader.read();if(chunk.done){going=false;break;}
-    dec.decode(chunk.value).split('\n').forEach(function(ln){
-      if(ln.indexOf('data: ')===0){
-        var d=ln.slice(6).trim();if(d==='[DONE]')return;
-        try{var obj=JSON.parse(d);var delta=obj.choices&&obj.choices[0]&&obj.choices[0].delta;
-          if(delta&&delta.content)onChunk(delta.content);}catch(ex){}
-      }
-    });
+  // 超时：120秒无新chunk自动停止
+  var lastChunkTime=Date.now();
+  var timeoutId=setInterval(function(){
+    if(Date.now()-lastChunkTime>120000){
+      clearInterval(timeoutId);
+      if(_streamAbort){_streamAbort.abort();_streamAbort=null;}
+    }
+  },3000);
+  try{
+    while(going){
+      var chunk;
+      try{ chunk=await reader.read(); }catch(e){ going=false; break; }
+      if(chunk.done){going=false;break;}
+      lastChunkTime=Date.now();
+      dec.decode(chunk.value).split('\n').forEach(function(ln){
+        if(ln.indexOf('data: ')===0){
+          var d=ln.slice(6).trim();if(d==='[DONE]')return;
+          try{var obj=JSON.parse(d);var delta=obj.choices&&obj.choices[0]&&obj.choices[0].delta;
+            if(delta&&delta.content)onChunk(delta.content);}catch(ex){}
+        }
+      });
+    }
+  }finally{
+    clearInterval(timeoutId);
+    _streamAbort=null;
   }
 }
 
@@ -1413,11 +1445,17 @@ async function fetchPubMedReal(kw,dStart,dEnd){
       dbg(sources[i].name+' failed: '+e.message.slice(0,60));
     }
   }
-  // Deduplicate by title similarity
-  var seen={};var unique=[];
+  // Deduplicate: PMID优先，无PMID则标题前25字标准化对比
+  var seenPmid={};var seenTitle={};var unique=[];
   allPapers.forEach(function(p){
-    var key=p.title.slice(0,30).toLowerCase().replace(/[^a-z0-9]/g,'');
-    if(!seen[key]){seen[key]=true;unique.push(p);}
+    if(p.pmid&&p.pmid!=='0'&&p.pmid!==''){
+      if(seenPmid[p.pmid])return;
+      seenPmid[p.pmid]=true;
+    }
+    var tk=p.title.slice(0,25).toLowerCase().replace(/[^a-z0-9\u4e00-\u9fa5]/g,'');
+    if(seenTitle[tk])return;
+    seenTitle[tk]=true;
+    unique.push(p);
   });
   dbg('Total unique papers from all sources: '+unique.length);
   return unique;
@@ -2296,6 +2334,24 @@ function getTopicContext(refTextBlock){
     +'- No specific drug dosages\n\n';
 }
 
+function stopBatch(n){
+  stopGeneration();
+  clearInterval(window['_timer'+n]);
+  var buf=document.getElementById('outputBox'+n).textContent||'';
+  document.getElementById('genLoading'+n).style.display='none';
+  if(buf.length>20){
+    // 已有内容，显示输出区
+    document.getElementById('outputArea'+n).style.display='block';
+    document.getElementById('wordCount'+n).textContent='已停止 · 共'+buf.length+'字（不完整）';
+    checkPublishRow();
+    if(n===1)revealBatch3();
+  }else{
+    // 没有内容，恢复按钮
+    document.getElementById('genArea'+n).style.display='block';
+    document.getElementById('genBtn'+n).disabled=false;
+  }
+}
+
 function startTimer(subLineId,msgs,interval){
   var i=0;
   return setInterval(function(){
@@ -2317,6 +2373,7 @@ async function generateBatch1(){
   document.getElementById('genLoading1').style.display='block';
   document.getElementById('outputArea1').style.display='none';
   var timer=startTimer('genSubLine1',['构建脚本结构...','分析论文核心数据...','撰写中文开场钩子...','展开背景叙事...','呈现核心数据...','撰写英文脚本...','打磨措辞与节奏...']);
+  window._timer1=timer;
   var ref=buildRefContext();
   var msg=getTopicContext(ref.textBlock)
     +'Generate ONLY the following two scripts (do not generate TikTok or image prompts):\n\n'
@@ -2365,6 +2422,7 @@ async function generateBatch2(){
   document.getElementById('genLoading2').style.display='block';
   document.getElementById('outputArea2').style.display='none';
   var timer=startTimer('genSubLine2',['提炼核心钩子...','压缩为60秒口播稿...','撰写中文TikTok版...','撰写英文TikTok版...','生成配图提示词...','优化视觉描述...']);
+  window._timer2=timer;
   var ref=buildRefContext();
   var msg=getTopicContext(ref.textBlock)
     +'Generate ONLY the following (do not generate YouTube long scripts):\n\n'
@@ -2513,6 +2571,44 @@ function sb3Fmt(sec){
 }
 function sb3FmtMin(min){return min+':00';}
 
+var sb3CurrentTab='long'; // 'long' | 'short'
+
+function sb3SwitchTab(tab){
+  sb3CurrentTab=tab;
+  // 标签按钮样式
+  document.getElementById('sb3Tab-long').style.background = tab==='long'?'var(--accent)':'transparent';
+  document.getElementById('sb3Tab-long').style.color = tab==='long'?'#fff':'var(--text2)';
+  document.getElementById('sb3Tab-short').style.background = tab==='short'?'var(--accent)':'transparent';
+  document.getElementById('sb3Tab-short').style.color = tab==='short'?'#fff':'var(--text2)';
+  // 预设切换
+  document.getElementById('sb3PresetLong').style.display = tab==='long'?'flex':'none';
+  document.getElementById('sb3PresetShort').style.display = tab==='short'?'flex':'none';
+  // 自动应用对应预设参数
+  if(tab==='long'){
+    sb3SetPreset(8,12,null);
+    document.getElementById('sb3MinSlider').min=3; document.getElementById('sb3MinSlider').max=20;
+    document.getElementById('sb3MaxSlider').min=3; document.getElementById('sb3MaxSlider').max=25;
+    document.getElementById('sb3MinSlider').value=8; document.getElementById('sb3MaxSlider').value=12;
+    document.getElementById('sb3MinVal').textContent='8:00'; document.getElementById('sb3MaxVal').textContent='12:00';
+    // 策略恢复按旁白字数
+    sb3SetStrategy('narration',document.getElementById('sb3-strat-narration'));
+    // 更新分镜表描述
+    document.querySelector('#batch3Section .gen-lbl').nextElementSibling.textContent='从脚本提取画面节点，按旁白字数分配时长，生成 Kling / Veo prompt';
+  }else{
+    // 短视频：每镜头3-5秒，总长30-90秒
+    sb3MinMin=0.5; sb3MaxMin=1;
+    document.getElementById('sb3MinSlider').min=0.3; document.getElementById('sb3MinSlider').max=3;
+    document.getElementById('sb3MaxSlider').min=0.5; document.getElementById('sb3MaxSlider').max=5;
+    document.getElementById('sb3MinSlider').value=0.5; document.getElementById('sb3MaxSlider').value=1;
+    document.getElementById('sb3MinVal').textContent='0:30'; document.getElementById('sb3MaxVal').textContent='1:00';
+    // 短视频策略改为均匀分配，每镜头3-5秒
+    sb3SetStrategy('equal',document.getElementById('sb3-strat-equal'));
+    document.querySelector('#batch3Section .gen-lbl').nextElementSibling.textContent='竖版 9:16 · 每镜头 3–5s · 生成 Kling / Veo prompt（TikTok / YouTube Shorts 通用）';
+  }
+  // 如果已有分镜数据，重新分配
+  if(sb3Rows.length>0){ sb3ApplyDuration(); }
+}
+
 function sb3SliderChange(){
   var mn=parseInt(document.getElementById('sb3MinSlider').value);
   var mx=parseInt(document.getElementById('sb3MaxSlider').value);
@@ -2595,43 +2691,36 @@ function sb3CalcFloorDur(row){
 
 /* ── 时长分配核心逻辑 ── */
 function sb3AllocateDurations(rows){
-  var targetSec=Math.round((sb3MinMin+sb3MaxMin)/2*60);
   var n=rows.length;
   if(n===0)return;
+  var isShort=sb3CurrentTab==='short';
+  var targetSec=Math.round((sb3MinMin+sb3MaxMin)/2*60);
 
-  // 步骤1：计算每行硬底（旁白最少需要的时长）
+  if(isShort){
+    // 短视频：每镜头3-5秒均匀分配
+    var perShot=Math.max(3,Math.min(8,Math.round(targetSec/n)));
+    rows.forEach(function(r){ r.baseDur=r.baseDur||r.dur||perShot; r.dur=perShot; });
+    var diff=targetSec-rows.reduce(function(s,r){return s+r.dur;},0);
+    if(rows.length>0) rows[rows.length-1].dur=Math.max(3,rows[rows.length-1].dur+diff);
+    return;
+  }
+
+  // 长视频：按旁白字数硬底+余量分配
   var floors=rows.map(function(r){return sb3CalcFloorDur(r);});
   var totalFloor=floors.reduce(function(a,b){return a+b;},0);
-
-  // 步骤2：限制目标不低于硬底总和
-  var effTarget=Math.max(targetSec, totalFloor+n*2); // 至少每场多2秒呼吸感
-
-  // 步骤3：计算余量
+  var effTarget=Math.max(targetSec, totalFloor+n*2);
   var surplus=effTarget-totalFloor;
-
-  // 步骤4：按策略分配余量
-  var weights=rows.map(function(r,i){
+  var weights=rows.map(function(r){
     if(sb3Strategy==='equal') return 1;
     if(sb3Strategy==='narration') return Math.max(1, r.narCount);
-    // type weighted
     return SB3_TYPE_WEIGHT[r.type]||1.0;
   });
   var totalW=weights.reduce(function(a,b){return a+b;},0)||1;
-
-  var durs=rows.map(function(r,i){
-    var extra=Math.round(weights[i]/totalW*surplus);
-    return floors[i]+extra;
-  });
-
-  // 步骤5：修正误差（余量加减到最长镜头）
+  var durs=rows.map(function(r,i){ return floors[i]+Math.round(weights[i]/totalW*surplus); });
   var diff=effTarget-durs.reduce(function(a,b){return a+b;},0);
   var maxIdx=durs.indexOf(Math.max.apply(null,durs));
   durs[maxIdx]=Math.max(4, durs[maxIdx]+diff);
-
-  rows.forEach(function(r,i){
-    r.baseDur=r.baseDur||r.dur||durs[i]; // 保留原始值用于对比显示
-    r.dur=durs[i];
-  });
+  rows.forEach(function(r,i){ r.baseDur=r.baseDur||r.dur||durs[i]; r.dur=durs[i]; });
 }
 
 function sb3ApplyDuration(){
@@ -2810,14 +2899,17 @@ function sb3ExportCSV(){
 
 function sb3ExportMD(){
   var topic=(selectedTopic&&selectedTopic.title)||'视频';
+  var isShort=sb3CurrentTab==='short';
   var cum=0;
-  var lines=['# 分镜表 — '+topic,'','| # | 时间戳 | 旁白摘要 | 画面描述 | AI Video Prompt | 时长 | 状态 |','|---|--------|---------|---------|----------------|------|------|'];
+  var lines=['# 分镜表 — '+topic+(isShort?' [短视频 9:16]':''),'',
+    '| # | 时间戳 | 旁白摘要 | 画面描述 | AI Video Prompt | 时长 | '+(isShort?'方向':'状态')+' |',
+    '|---|--------|---------|---------|----------------|------|------|'];
   sb3Rows.forEach(function(r){
     var start=cum; cum+=r.dur;
-    lines.push('| '+r.num+' | '+sb3Fmt(start)+'–'+sb3Fmt(cum)+' | '+r.nar+' | '+r.vis+' | '+(r.prompt||'⏳')+' | '+r.dur+'s | '+r.status+' |');
+    lines.push('| '+r.num+' | '+sb3Fmt(start)+'–'+sb3Fmt(cum)+' | '+r.nar+' | '+r.vis+' | '+(r.prompt||'⏳')+' | '+r.dur+'s | '+(isShort?'9:16竖版':r.status)+' |');
   });
-  lines.push('','> 生成时间：'+new Date().toLocaleString('zh-CN')+'  共'+sb3Rows.length+'个镜头');
-  sb3Download('storyboard.md',lines.join('\n'),'text/markdown');
+  lines.push('','> 生成时间：'+new Date().toLocaleString('zh-CN')+'  共'+sb3Rows.length+'个镜头'+(isShort?' · 短视频竖版':''));
+  sb3Download((isShort?'storyboard_short':'storyboard')+'.md',lines.join('\n'),'text/markdown');
 }
 
 function sb3Download(filename,content,mime){
