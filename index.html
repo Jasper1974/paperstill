@@ -2740,30 +2740,60 @@ async function generateScript(){
   var key=getApiKey();if(!key){showKeyModal();return;}
   var p=activePlatform;
   var ps=platformSettings[p];
-  var genBtn=document.getElementById('genScriptBtn');
-  var stopBtn=document.getElementById('stopScriptBtn');
-  var regenBtn=document.getElementById('regenScriptBtn');
-  var loading=document.getElementById('genScriptLoading');
+
+  function setScriptState(state){
+    // state: 'idle' | 'running' | 'done'
+    var genBtn=document.getElementById('genScriptBtn');
+    var stopBtn=document.getElementById('stopScriptBtn');
+    var regenBtn=document.getElementById('regenScriptBtn');
+    var loading=document.getElementById('genScriptLoading');
+    var mpb=document.getElementById('markPublishedBtn');
+    if(state==='idle'){
+      if(genBtn){genBtn.style.display='inline-flex';genBtn.disabled=false;}
+      if(stopBtn)stopBtn.style.display='none';
+      if(regenBtn)regenBtn.style.display='none';
+      if(loading)loading.style.display='none';
+      if(mpb)mpb.style.display='none';
+    }else if(state==='running'){
+      if(genBtn){genBtn.style.display='none';}
+      if(stopBtn)stopBtn.style.display='inline-flex';
+      if(regenBtn)regenBtn.style.display='none';
+      if(loading)loading.style.display='block';
+      if(mpb)mpb.style.display='none';
+    }else if(state==='done'){
+      if(genBtn)genBtn.style.display='none';
+      if(stopBtn)stopBtn.style.display='none';
+      if(regenBtn)regenBtn.style.display='inline-flex';
+      if(loading)loading.style.display='none';
+      if(mpb)mpb.style.display='inline-flex';
+    }else if(state==='stopped'){
+      if(genBtn)genBtn.style.display='none';
+      if(stopBtn)stopBtn.style.display='none';
+      if(regenBtn)regenBtn.style.display='inline-flex';
+      if(loading)loading.style.display='none';
+      if(mpb)mpb.style.display='none';
+    }
+  }
+
   var area=document.getElementById('scriptOutputArea');
   var box=document.getElementById('scriptOutputBox');
   var wc=document.getElementById('scriptWordCount');
-  if(genBtn)genBtn.style.display='none';
-  if(stopBtn)stopBtn.style.display='inline-flex';
-  if(regenBtn)regenBtn.style.display='none';
-  if(loading)loading.style.display='block';
+  var statusEl=document.getElementById('genScriptStatus');
+  var subEl=document.getElementById('genScriptSub');
+
+  setScriptState('running');
   if(area)area.style.display='none';
   if(box)box.textContent='';
   if(wc)wc.textContent='';
-  var ref=buildRefContext();
-  var statusEl=document.getElementById('genScriptStatus');
-  var subEl=document.getElementById('genScriptSub');
   if(statusEl)statusEl.textContent=p==='long'?'正在生成 YouTube 脚本…':'正在生成 TikTok 脚本…';
+
   var msgs=p==='long'
     ?['规划章节结构…','撰写中文旁白…','撰写英文旁白…','精调叙事节奏…']
     :['3秒钩子…','压缩口播…','配图提示词…','口播节奏校对…'];
   var timerIdx=0;
   var timer=setInterval(function(){timerIdx=(timerIdx+1)%msgs.length;if(subEl)subEl.textContent=msgs[timerIdx];},2200);
 
+  var ref=buildRefContext();
   var msg;
   if(p==='long'){
     msg=getTopicContext(ref.textBlock)
@@ -2783,11 +2813,11 @@ async function generateScript(){
       +'Cover 16:9: ...\nData Infographic: ...\nMechanism/Tips: ...\n\n'
       +'Rules: hook first; punchy; correlation not causation.';
   }
+
   var buf='';
   _scriptAbort=new AbortController();
-  var aborted=false;
+  var stopped=false;
   try{
-    // Use streaming
     var proxy=getProxyUrl();
     var apiKey=getApiKey();
     var userContent=ref.imageBlocks&&ref.imageBlocks.length>0
@@ -2805,7 +2835,6 @@ async function generateScript(){
     }
     if(!res.ok){var err=await res.text();throw new Error('API '+res.status+': '+err.slice(0,150));}
     clearInterval(timer);
-    if(loading)loading.style.display='none';
     if(area)area.style.display='block';
     var reader=res.body.getReader();var dec=new TextDecoder();var going=true;
     while(going){
@@ -2820,18 +2849,14 @@ async function generateScript(){
     }
     scriptOutputs[p]=buf;
     if(wc)wc.textContent='共'+buf.length+'字';
-    var mpb=document.getElementById('markPublishedBtn');
-    if(mpb)mpb.style.display='inline-flex';
+    setScriptState('done');
   }catch(e){
-    aborted=e.name==='AbortError';
+    stopped=e.name==='AbortError';
     clearInterval(timer);
-    if(!aborted)showToast('脚本生成出错：'+e.message);
-    if(loading)loading.style.display='none';
-    if(buf){if(area)area.style.display='block';scriptOutputs[p]=buf;}
+    if(!stopped)showToast('脚本生成出错：'+e.message);
+    if(buf){if(area)area.style.display='block';scriptOutputs[p]=buf;if(wc)wc.textContent='共'+buf.length+'字（已停止）';}
+    setScriptState(buf?'stopped':'idle');
   }
-  if(genBtn)genBtn.style.display='inline-flex';
-  if(stopBtn)stopBtn.style.display='none';
-  if(regenBtn)regenBtn.style.display='inline-flex';
   _scriptAbort=null;
 }
 
@@ -3181,10 +3206,7 @@ function resetActivePlatform(){
   resetBatch(activePlatform==='long'?1:2);
   resetStoryboard();
   updateStudioOutputView();
-  var regen=document.getElementById('regenStudioBtn');
-  if(regen)regen.style.display='none';
-  var ga=document.getElementById('genBtnStudio');
-  if(ga)ga.disabled=false;
+  setStudioState('idle');
 }
 
 function updateRefUsedHint(){
@@ -3202,138 +3224,94 @@ function startTimer(subLineId,msgs,interval){
 
 async function generateBatch1(){
   if(!hasProduceSource()){showToast('请先选择选题或上传资料');return;}
-  var key=getApiKey();
-  if(!key){showKeyModal();return;}
+  if(!getApiKey()){showKeyModal();return;}
   activePlatform='long';
   var ps=platformSettings.long;
-  var btn=document.getElementById('genBtnStudio');
-  var stopBtn=document.getElementById('stopStudioBtn');
-  var regenBtn=document.getElementById('regenStudioBtn');
-  if(btn)btn.disabled=true;
-  if(stopBtn)stopBtn.style.display='inline-flex';
-  if(regenBtn)regenBtn.style.display='none';
-  document.getElementById('genLoadingStudio').style.display='block';
+  setStudioState('running');
   document.getElementById('genStatusStudio').textContent='正在生成 YouTube 长视频分镜…';
-  var sourceLabel=getSourcePromptLabel();
-  var timer=startTimer('genSubLineStudio',['读取'+sourceLabel+'…','规划章节结构…','撰写独白…','设计画面分镜…','对齐目标时长 '+formatSec(ps.targetSec)+'…']);
+  var timer=startTimer('genSubLineStudio',['读取来源…','规划章节结构…','撰写独白…','设计画面分镜…','对齐目标时长 '+formatSec(ps.targetSec)+'…']);
   var ref=buildRefContext();
   var msg=getTopicContext(ref.textBlock)
     +'PLATFORM: YouTube long-form, 16:9, target duration ~'+ps.targetSec+' seconds (~'+formatSec(ps.targetSec)+').\n\n'
-    +'OUTPUT — PART A only SHOT lines (one per line, no extra text):\n'
-    +'SHOT|long|镜号|秒数|镜头类型|旁白中文|画面描述|屏幕字幕|备注\n'
+    +'OUTPUT — PART A only SHOT lines:\nSHOT|long|镜号|秒数|镜头类型|旁白中文|画面描述|屏幕字幕|备注\n'
     +'Types: hook, A-roll, B-roll, data, chapter\n'
     +'PART B after all SHOT lines:\n===SCRIPT===\nFull readable script with chapters.\n\n'
     +'Rules: 15-40 shots; total duration near '+ps.targetSec+'s; research suggests only; correlation not causation.';
   var outEl=document.getElementById('outputBoxStudio');
-  outEl.textContent='';
-  var buf1='';
+  outEl.textContent='';var buf='';
   _studioAbort=new AbortController();
   try{
     var proxy=getProxyUrl();var apiKey=getApiKey();
-    var userContent=ref.imageBlocks&&ref.imageBlocks.length>0
-      ?ref.imageBlocks.map(function(img){return{type:'image',source:{type:'base64',media_type:img.mediaType,data:img.b64}};}).concat([{type:'text',text:msg+(ref.imageBlocks.length?' (请结合上方图片中的信息一并参考)':'')}])
-      :msg;
-    var body=JSON.stringify({model:getApiModel(),max_tokens:8000,stream:true,messages:[{role:'system',content:getDocStyle()},{role:'user',content:userContent}]});
+    var uc=ref.imageBlocks&&ref.imageBlocks.length>0
+      ?ref.imageBlocks.map(function(img){return{type:'image',source:{type:'base64',media_type:img.mediaType,data:img.b64}};}).concat([{type:'text',text:msg}]):msg;
     var res;
-    if(proxy){res=await fetch(proxy,{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','x-api-key':apiKey,'x-base-url':getApiBase()},body:body});}
-    else{res=await fetch(getApiBase().replace(/\/+$/,'')+'/chat/completions',{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:body});}
-    if(!res.ok){var err=await res.text();throw new Error('API '+res.status+': '+err.slice(0,150));}
-    clearInterval(timer);
-    document.getElementById('genLoadingStudio').style.display='none';
-    if(btn)btn.disabled=false;
+    if(proxy){res=await fetch(proxy,{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','x-api-key':apiKey,'x-base-url':getApiBase()},body:JSON.stringify({model:getApiModel(),max_tokens:8000,stream:true,messages:[{role:'system',content:getDocStyle()},{role:'user',content:uc}]})});}
+    else{res=await fetch(getApiBase().replace(/\/+$/,'')+'/chat/completions',{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({model:getApiModel(),max_tokens:8000,stream:true,messages:[{role:'system',content:getDocStyle()},{role:'user',content:uc}]})});}
+    if(!res.ok){var er=await res.text();throw new Error('API '+res.status+': '+er.slice(0,150));}
+    clearInterval(timer);setStudioState('done');
     var reader=res.body.getReader();var dec=new TextDecoder();var going=true;
-    while(going){
-      var chunk=await reader.read();if(chunk.done){going=false;break;}
-      dec.decode(chunk.value).split('\n').forEach(function(ln){
-        if(ln.indexOf('data: ')===0){var d=ln.slice(6).trim();if(d==='[DONE]')return;
-          try{var obj=JSON.parse(d);var delta=obj.choices&&obj.choices[0]&&obj.choices[0].delta;
-            if(delta&&delta.content){buf1+=delta.content;outEl.textContent=buf1;outEl.scrollTop=outEl.scrollHeight;document.getElementById('wordCountStudio').textContent='生成中… '+buf1.length+'字';}}catch(ex){}}
-      });
-    }
-    platformOutputs.long=buf1;outputFull=buf1;
-    document.getElementById('outputBox1').textContent=buf1;
-    applyStoryboardFromGeneration(buf1,'long');
+    while(going){var chunk=await reader.read();if(chunk.done){going=false;break;}
+      dec.decode(chunk.value).split('\n').forEach(function(ln){if(ln.indexOf('data: ')===0){var d=ln.slice(6).trim();if(d==='[DONE]')return;
+        try{var obj=JSON.parse(d);var delta=obj.choices&&obj.choices[0]&&obj.choices[0].delta;
+          if(delta&&delta.content){buf+=delta.content;outEl.textContent=buf;outEl.scrollTop=outEl.scrollHeight;document.getElementById('wordCountStudio').textContent='生成中… '+buf.length+'字';}}catch(ex){}}});}
+    platformOutputs.long=buf;outputFull=buf;
+    document.getElementById('outputBox1').textContent=buf;
+    applyStoryboardFromGeneration(buf,'long');
     updateStudioOutputView();updateRefUsedHintStudio();checkPublishRow();
     var mpb=document.getElementById('markPublishedBtn');if(mpb)mpb.style.display='inline-flex';
   }catch(e){
     clearInterval(timer);
-    document.getElementById('genLoadingStudio').style.display='none';
-    if(btn)btn.disabled=false;
-    if(e.name!=='AbortError')alert('生成出错：'+e.message);
-    if(buf1){platformOutputs.long=buf1;applyStoryboardFromGeneration(buf1,'long');updateStudioOutputView();}
+    if(e.name!=='AbortError')showToast('生成出错：'+e.message);
+    if(buf){platformOutputs.long=buf;applyStoryboardFromGeneration(buf,'long');updateStudioOutputView();}
+    setStudioState(buf?'stopped':'idle');
   }
-  if(stopBtn)stopBtn.style.display='none';
-  if(regenBtn)regenBtn.style.display='inline-flex';
   _studioAbort=null;
 }
 
 async function generateBatch2(){
   if(!hasProduceSource()){showToast('请先选择选题或上传资料');return;}
-  var key=getApiKey();
-  if(!key){showKeyModal();return;}
+  if(!getApiKey()){showKeyModal();return;}
   activePlatform='short';
   var ps=platformSettings.short;
-  var btn=document.getElementById('genBtnStudio');
-  var stopBtn=document.getElementById('stopStudioBtn');
-  var regenBtn=document.getElementById('regenStudioBtn');
-  if(btn)btn.disabled=true;
-  if(stopBtn)stopBtn.style.display='inline-flex';
-  if(regenBtn)regenBtn.style.display='none';
-  document.getElementById('genLoadingStudio').style.display='block';
+  setStudioState('running');
   document.getElementById('genStatusStudio').textContent='正在生成 TikTok / Shorts 分镜…';
   var plats=(ps.platforms||['tiktok','shorts']).join(' + ');
-  var sourceLabel=getSourcePromptLabel();
-  var timer=startTimer('genSubLineStudio',['读取'+sourceLabel+'…','3秒钩子…','压缩口播至 '+ps.targetSec+' 秒…','竖屏画面…','屏幕字幕…']);
+  var timer=startTimer('genSubLineStudio',['读取来源…','3秒钩子…','压缩口播至 '+ps.targetSec+' 秒…','竖屏画面…','屏幕字幕…']);
   var ref=buildRefContext();
   var msg=getTopicContext(ref.textBlock)
     +'PLATFORM: vertical 9:16 for '+plats+', total ~'+ps.targetSec+' seconds. Strongest hook in first 3 seconds.\n\n'
-    +'OUTPUT — PART A SHOT lines only:\n'
-    +'SHOT|short|镜号|秒数|镜头类型|口播中文|竖屏画面|屏幕大字|备注\n'
-    +'Types: hook, A-roll, text-card. Max 12 chars per spoken sentence in narration.\n'
+    +'OUTPUT — PART A SHOT lines only:\nSHOT|short|镜号|秒数|镜头类型|口播中文|竖屏画面|屏幕大字|备注\n'
+    +'Types: hook, A-roll, text-card. Max 12 chars per spoken sentence.\n'
     +'PART B:\n===SCRIPT===\nThen ### Image Prompts (3) for 9:16 vertical: Cover, Data, CTA.\n\n'
     +'Rules: 4-12 shots; correlation not causation; punchy spoken Chinese.';
   var outEl=document.getElementById('outputBoxStudio');
-  outEl.textContent='';
-  var buf2='';
+  outEl.textContent='';var buf='';
   _studioAbort=new AbortController();
   try{
     var proxy=getProxyUrl();var apiKey=getApiKey();
-    var userContent=ref.imageBlocks&&ref.imageBlocks.length>0
-      ?ref.imageBlocks.map(function(img){return{type:'image',source:{type:'base64',media_type:img.mediaType,data:img.b64}};}).concat([{type:'text',text:msg+(ref.imageBlocks.length?' (请结合上方图片中的信息一并参考)':'')}])
-      :msg;
-    var body=JSON.stringify({model:getApiModel(),max_tokens:8000,stream:true,messages:[{role:'system',content:getDocStyle()},{role:'user',content:userContent}]});
+    var uc=ref.imageBlocks&&ref.imageBlocks.length>0
+      ?ref.imageBlocks.map(function(img){return{type:'image',source:{type:'base64',media_type:img.mediaType,data:img.b64}};}).concat([{type:'text',text:msg}]):msg;
     var res;
-    if(proxy){res=await fetch(proxy,{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','x-api-key':apiKey,'x-base-url':getApiBase()},body:body});}
-    else{res=await fetch(getApiBase().replace(/\/+$/,'')+'/chat/completions',{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:body});}
-    if(!res.ok){var err=await res.text();throw new Error('API '+res.status+': '+err.slice(0,150));}
-    clearInterval(timer);
-    document.getElementById('genLoadingStudio').style.display='none';
-    if(btn)btn.disabled=false;
+    if(proxy){res=await fetch(proxy,{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','x-api-key':apiKey,'x-base-url':getApiBase()},body:JSON.stringify({model:getApiModel(),max_tokens:8000,stream:true,messages:[{role:'system',content:getDocStyle()},{role:'user',content:uc}]})});}
+    else{res=await fetch(getApiBase().replace(/\/+$/,'')+'/chat/completions',{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:JSON.stringify({model:getApiModel(),max_tokens:8000,stream:true,messages:[{role:'system',content:getDocStyle()},{role:'user',content:uc}]})});}
+    if(!res.ok){var er=await res.text();throw new Error('API '+res.status+': '+er.slice(0,150));}
+    clearInterval(timer);setStudioState('done');
     var reader=res.body.getReader();var dec=new TextDecoder();var going=true;
-    while(going){
-      var chunk=await reader.read();if(chunk.done){going=false;break;}
-      dec.decode(chunk.value).split('\n').forEach(function(ln){
-        if(ln.indexOf('data: ')===0){var d=ln.slice(6).trim();if(d==='[DONE]')return;
-          try{var obj=JSON.parse(d);var delta=obj.choices&&obj.choices[0]&&obj.choices[0].delta;
-            if(delta&&delta.content){buf2+=delta.content;outEl.textContent=buf2;outEl.scrollTop=outEl.scrollHeight;document.getElementById('wordCountStudio').textContent='生成中… '+buf2.length+'字';}}catch(ex){}}
-      });
-    }
-    platformOutputs.short=buf2;
-    document.getElementById('outputBox2').textContent=buf2;
-    outputFull=(platformOutputs.long||'')+'\n\n---\n\n'+buf2;
-    applyStoryboardFromGeneration(buf2,'short');
-    updateStudioOutputView();updateRefUsedHintStudio();
-    if(activePlatform==='short')switchPlatform('short');
-    checkPublishRow();
+    while(going){var chunk=await reader.read();if(chunk.done){going=false;break;}
+      dec.decode(chunk.value).split('\n').forEach(function(ln){if(ln.indexOf('data: ')===0){var d=ln.slice(6).trim();if(d==='[DONE]')return;
+        try{var obj=JSON.parse(d);var delta=obj.choices&&obj.choices[0]&&obj.choices[0].delta;
+          if(delta&&delta.content){buf+=delta.content;outEl.textContent=buf;outEl.scrollTop=outEl.scrollHeight;document.getElementById('wordCountStudio').textContent='生成中… '+buf.length+'字';}}catch(ex){}}});}
+    platformOutputs.short=buf;
+    document.getElementById('outputBox2').textContent=buf;
+    outputFull=(platformOutputs.long||'')+'\n\n---\n\n'+buf;
+    applyStoryboardFromGeneration(buf,'short');
+    updateStudioOutputView();updateRefUsedHintStudio();checkPublishRow();
   }catch(e){
     clearInterval(timer);
-    document.getElementById('genLoadingStudio').style.display='none';
-    if(btn)btn.disabled=false;
-    if(e.name!=='AbortError')alert('生成出错：'+e.message);
-    if(buf2){platformOutputs.short=buf2;applyStoryboardFromGeneration(buf2,'short');updateStudioOutputView();}
+    if(e.name!=='AbortError')showToast('生成出错：'+e.message);
+    if(buf){platformOutputs.short=buf;applyStoryboardFromGeneration(buf,'short');updateStudioOutputView();}
+    setStudioState(buf?'stopped':'idle');
   }
-  if(stopBtn)stopBtn.style.display='none';
-  if(regenBtn)regenBtn.style.display='inline-flex';
   _studioAbort=null;
 }
 
