@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-<!-- Paperstill index.html v2.3.1 · 2026-05-18 · 保存时请重命名为 index-v2.3.1.html 便于回溯 -->
+<!-- Paperstill index.html v2.4.0 · 2026-05-18 · 保存时请重命名为 index-v2.4.0.html 便于回溯 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Paperstill v2.3.1</title>
+<title>Paperstill v2.4.0</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&display=swap');
 
@@ -680,6 +680,9 @@ body {
   <button class="nav-item" onclick="nav('favorites')" id="nav-favorites">
     <span class="nav-icon">⭐</span> 收藏夹
   </button>
+  <button class="nav-item" onclick="nav('history')" id="nav-history">
+    <span class="nav-icon">📋</span> 历史选题
+  </button>
   <div class="sidebar-footer">
     <span id="appVersion" style="display:block;margin-bottom:6px;color:var(--text3)"></span>
     <span id="keyStatus" style="color:var(--red)">⚠ 未设置API Key</span><br>
@@ -777,22 +780,36 @@ body {
       <div id="favList"></div>
     </div>
   </div>
-  <div class="panel" id="panel-produce">
-    <!-- No-source empty state: only shown when no topic AND no files -->
-    <div class="produce-entry" id="no-topic" style="display:none">
-      <div class="empty-icon">✦</div>
-      <div class="empty-title">从选题开始，或直接上传资料</div>
-      <div class="empty-sub">在顶部搜索论文选题，或点击 📎 上传 PDF / Word / Markdown 直接开始</div>
-      <div style="margin-top:20px;display:flex;gap:12px">
-        <button class="btn-primary" onclick="nav('discover')">🔍 去选题</button>
-        <button class="btn-secondary" onclick="document.getElementById('refFileInput').click()">📎 上传资料</button>
-      </div>
-    </div>
 
+  <!-- HISTORY -->
+  <div class="panel" id="panel-history">
+    <div class="produce-wrap">
+      <div class="panel-title">📋 历史选题</div>
+      <div class="panel-sub">已发布的题目记录，防止重复做同类内容</div>
+      <div style="display:flex;gap:8px;margin-bottom:18px;align-items:center">
+        <input id="histInput" type="text" placeholder="手动录入已发布题目…"
+          style="flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:9px 14px;color:var(--text);font-size:13px;outline:none;font-family:'Syne','Noto Sans SC',sans-serif"
+          onkeydown="if(event.key==='Enter')histManualAdd()">
+        <button class="btn-primary" onclick="histManualAdd()" style="padding:9px 16px;font-size:13px">+ 录入</button>
+      </div>
+      <div id="histEmpty" style="margin-top:40px;text-align:center;color:var(--text3);display:none">
+        <div style="font-size:36px;margin-bottom:12px">📋</div>
+        <div style="font-size:14px">还没有历史记录</div>
+        <div style="font-size:12px;margin-top:6px">在生产页完成脚本后点「✓ 标记已发布」，或在上方手动录入</div>
+      </div>
+      <div id="histList"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-produce">
     <div class="produce-wrap" id="produce-main">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
         <div class="panel-title" style="margin-bottom:0">生产工作室 <span class="app-ver-pill" id="panelVersionPill"></span></div>
         <button class="btn-secondary" style="padding:6px 12px;font-size:11px" onclick="resetGen()">↺ 重置</button>
+      </div>
+      <!-- 无来源时的轻提示 -->
+      <div id="no-topic" style="display:none;background:var(--surface2);border:1px dashed var(--border2);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:var(--text3)">
+        ↑ 在上方搜索论文选题，或上传 PDF / Word / Markdown，即可开始生成
       </div>
       <div class="produce-source-bar" id="produceSourceBar" style="margin-bottom:16px"></div>
       <div id="safetyBox"></div>
@@ -821,6 +838,7 @@ body {
               <button type="button" class="btn-primary" id="genScriptBtn" onclick="generateScript()">✦ 生成脚本</button>
               <button type="button" class="btn-secondary" id="stopScriptBtn" style="display:none" onclick="stopScript()">■ 停止</button>
               <button type="button" class="btn-secondary" id="regenScriptBtn" style="display:none" onclick="regenScript()">↺ 重新生成</button>
+              <button type="button" id="markPublishedBtn" style="display:none;padding:6px 14px;border-radius:8px;border:1px solid #22c55e44;background:#22c55e0a;color:var(--green);font-size:12px;font-weight:600;cursor:pointer;font-family:'Syne',sans-serif" onclick="markPublished()">✓ 标记已发布</button>
               <span id="scriptWordCount" style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace"></span>
             </div>
             <div id="genScriptLoading" style="display:none">
@@ -977,8 +995,9 @@ body {
 ═══════════════════════════════════════════ */
 var selectedTopic=null,outputFull='',checkState={};
 var SK_STATE='crawl_state2',SK_PAPERS='paper_db2',SK_SCORED='scored_db2',SK_REF='ref_files_v1';
+var SK_HIST='paperstill_hist';
 var SCORE_N=60,FETCH_N=60,CRAWL_DIRS_N=20;
-var APP_VERSION='2.3.1';
+var APP_VERSION='2.4.0';
 var APP_BUILD='2026-05-18';
 var _produceSessionKey='';
 var SK_CHECK='pub_check_v1';
@@ -1111,7 +1130,6 @@ function dbg(msg){
 function nav(p){
   document.querySelectorAll('.panel').forEach(function(e){e.classList.remove('active');});
   document.querySelectorAll('.nav-item,.mob-btn').forEach(function(e){e.classList.remove('active');});
-  // redirect publish to produce
   if(p==='publish')p='produce';
   document.getElementById('panel-'+p).classList.add('active');
   var ni=document.getElementById('nav-'+p);if(ni)ni.classList.add('active');
@@ -1119,6 +1137,7 @@ function nav(p){
   updateTopBar(p);
   if(p==='produce')updateProduce();
   if(p==='favorites')renderFavorites();
+  if(p==='history')renderHistory();
   window.scrollTo(0,0);
 }
 function mountWorkspaceSearch(slotId){
@@ -2058,6 +2077,7 @@ function renderTopics(topics,stats){
       +'<span style="font-size:10px;color:var(--text3);min-width:18px;text-align:right;flex-shrink:0;font-family:DM Mono,monospace">'+(i+1)+'</span>'
       +pm+warnIcon
       +'<span style="font-size:13px;font-weight:600;flex:1;line-height:1.3">'+t.title+'</span>'
+      +'<span id="done-label-'+i+'" style="display:none;font-size:9px;padding:1px 6px;border-radius:4px;background:#22c55e18;border:1px solid #22c55e30;color:var(--green);font-family:DM Mono,monospace;flex-shrink:0">✓ 已做</span>'
       +'<span style="font-size:12px;font-weight:800;color:'+scoreColor+';flex-shrink:0;font-family:DM Mono,monospace">'+t.total+'</span>'
       +'<span style="font-size:9px;color:var(--text3);flex-shrink:0;font-family:DM Mono,monospace;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.paper.slice(0,18)+'</span>'
       +'<span id="ta-'+i+'" style="color:var(--text3);font-size:10px;flex-shrink:0;margin-left:3px">▼</span>'
@@ -2084,6 +2104,7 @@ function renderTopics(topics,stats){
 
   document.getElementById('topicList').innerHTML=html;
   document.getElementById('discoverResults').style.display='block';
+  renderDoneLabels();
 }
 
 function toggleDetail(i,ev){
@@ -2249,25 +2270,116 @@ function showToast(msg){
 }
 
 /* ═══════════════════════════════════════════
-   PRODUCE
+   HISTORY
 ═══════════════════════════════════════════ */
+async function getHistory(){
+  var raw=await stGet(SK_HIST);
+  try{return Array.isArray(raw)?raw:(raw?JSON.parse(raw):[]);}catch(e){return[];}
+}
+async function saveHistory(arr){
+  await stSet(SK_HIST,arr.slice(0,300));
+}
+
+async function markPublished(){
+  var title=selectedTopic?selectedTopic.title:'';
+  if(!title){
+    // try to get from script output
+    var box=document.getElementById('scriptOutputBox');
+    if(box&&box.textContent.length>10)title='[外部资料] '+new Date().toISOString().slice(0,10);
+    else{showToast('请先选择选题或生成脚本');return;}
+  }
+  var hist=await getHistory();
+  if(hist.some(function(h){return h.title===title;})){showToast('已在历史记录中');return;}
+  hist.unshift({title:title,date:new Date().toISOString().slice(0,10),platform:activePlatform});
+  await saveHistory(hist);
+  showToast('✓ 已记录到历史选题');
+  // update "已做" badge on discover list
+  renderDoneLabels();
+}
+
+async function histManualAdd(){
+  var inp=document.getElementById('histInput');
+  if(!inp)return;
+  var title=inp.value.trim();
+  if(!title){showToast('请输入题目');return;}
+  var hist=await getHistory();
+  if(hist.some(function(h){return h.title===title;})){showToast('已存在');inp.value='';return;}
+  hist.unshift({title:title,date:new Date().toISOString().slice(0,10),manual:true});
+  await saveHistory(hist);
+  inp.value='';
+  showToast('✓ 已录入');
+  renderHistory();
+}
+
+async function histDelete(title){
+  var hist=await getHistory();
+  hist=hist.filter(function(h){return h.title!==title;});
+  await saveHistory(hist);
+  renderHistory();
+  renderDoneLabels();
+}
+
+async function renderHistory(){
+  var hist=await getHistory();
+  var empty=document.getElementById('histEmpty');
+  var list=document.getElementById('histList');
+  if(!list)return;
+  if(!hist.length){
+    if(empty)empty.style.display='block';
+    list.innerHTML='';return;
+  }
+  if(empty)empty.style.display='none';
+  // group by month
+  var groups={};
+  hist.forEach(function(h){
+    var m=(h.date||'').slice(0,7)||'未知';
+    if(!groups[m])groups[m]=[];
+    groups[m].push(h);
+  });
+  var html='';
+  Object.keys(groups).sort().reverse().forEach(function(m){
+    html+='<div style="margin-bottom:20px">'
+      +'<div style="font-size:10px;color:var(--text3);font-family:\'DM Mono\',monospace;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">'+m+'</div>';
+    groups[m].forEach(function(h){
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:6px">'
+        +'<span style="font-size:18px">'+(h.manual?'✏️':'✅')+'</span>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escHtml(h.title)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);font-family:\'DM Mono\',monospace;margin-top:2px">'+(h.date||'')+' · '+(h.manual?'手动录入':(h.platform==='long'?'YouTube':'TikTok'))+'</div>'
+        +'</div>'
+        +'<button onclick="histDelete(\''+h.title.replace(/'/g,"\\'")+'\')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:4px 6px;border-radius:4px" title="删除">✕</button>'
+        +'</div>';
+    });
+    html+='</div>';
+  });
+  list.innerHTML=html;
+}
+
+async function renderDoneLabels(){
+  var hist=await getHistory();
+  var doneSet={};
+  hist.forEach(function(h){doneSet[h.title]=true;});
+  // update any visible topic rows
+  var topics=window._topics||[];
+  topics.forEach(function(t,i){
+    var el=document.getElementById('done-label-'+i);
+    if(el){el.style.display=doneSet[t.title]?'inline':'none';}
+  });
+}
 function updateProduce(){
   var noTopic=document.getElementById('no-topic');
   var main=document.getElementById('produce-main');
-  if(!hasProduceSource()){
-    if(noTopic)noTopic.style.display='flex';
-    if(main)main.style.display='none';
-    updateTopBar('produce');
-    return;
-  }
-  if(noTopic)noTopic.style.display='none';
+  // produce-main always visible; no-topic is just a hint banner
   if(main)main.style.display='block';
+  if(noTopic)noTopic.style.display=hasProduceSource()?'none':'block';
   renderProduceSourceBar();
   updateTopBar('produce');
   var sb=document.getElementById('safetyBox');
-  if(selectedTopic&&selectedTopic.safety_level==='warn')
-    sb.innerHTML='<div class="warn-box"><b>&#9888; 措辞提示已内嵌进生成指令</b></div>';
-  else sb.innerHTML='';
+  if(sb){
+    if(selectedTopic&&selectedTopic.safety_level==='warn')
+      sb.innerHTML='<div class="warn-box"><b>&#9888; 措辞提示已内嵌进生成指令</b></div>';
+    else sb.innerHTML='';
+  }
   var key=(selectedTopic?selectedTopic.title:'ext')+'|'+refFiles.filter(function(f){return f.status==='ok';}).map(function(f){return f.id;}).join(',');
   if(key!==_produceSessionKey){
     _produceSessionKey=key;
@@ -2708,6 +2820,8 @@ async function generateScript(){
     }
     scriptOutputs[p]=buf;
     if(wc)wc.textContent='共'+buf.length+'字';
+    var mpb=document.getElementById('markPublishedBtn');
+    if(mpb)mpb.style.display='inline-flex';
   }catch(e){
     aborted=e.name==='AbortError';
     clearInterval(timer);
@@ -3140,6 +3254,7 @@ async function generateBatch1(){
     document.getElementById('outputBox1').textContent=buf1;
     applyStoryboardFromGeneration(buf1,'long');
     updateStudioOutputView();updateRefUsedHintStudio();checkPublishRow();
+    var mpb=document.getElementById('markPublishedBtn');if(mpb)mpb.style.display='inline-flex';
   }catch(e){
     clearInterval(timer);
     document.getElementById('genLoadingStudio').style.display='none';
