@@ -273,6 +273,14 @@ body {
 }
 .tc-btn:hover, .topic-card.selected .tc-btn { background: var(--accent); color: #fff; border-color: var(--accent); }
 
+/* ── STEP SECTIONS ── */
+.step-section { margin-bottom: 8px; }
+.step-label {
+  font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--text3); font-family: 'DM Mono', monospace;
+  margin-bottom: 10px; padding: 0 2px;
+}
+
 /* ── PRODUCE ── */
 .produce-wrap { flex: 1; padding: 32px 40px; overflow-y: auto; }
 .panel-title { font-size: 26px; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 4px; }
@@ -669,9 +677,6 @@ body {
   <button class="nav-item" onclick="nav('produce')" id="nav-produce">
     <span class="nav-icon">✦</span> 生产
   </button>
-  <button class="nav-item" onclick="nav('publish')" id="nav-publish">
-    <span class="nav-icon">🚀</span> 发布
-  </button>
   <button class="nav-item" onclick="nav('favorites')" id="nav-favorites">
     <span class="nav-icon">⭐</span> 收藏夹
   </button>
@@ -685,7 +690,7 @@ body {
 <div class="mob-nav">
   <button class="mob-btn active" onclick="nav('discover')" id="mob-discover"><span class="mob-icon">🔍</span>选题</button>
   <button class="mob-btn" onclick="nav('produce')" id="mob-produce"><span class="mob-icon">✦</span>生产</button>
-  <button class="mob-btn" onclick="nav('publish')" id="mob-publish"><span class="mob-icon">🚀</span>发布</button>
+  <button class="mob-btn" onclick="nav('favorites')" id="mob-favorites"><span class="mob-icon">⭐</span>收藏</button>
 </div>
 
 <div class="main">
@@ -773,42 +778,86 @@ body {
     </div>
   </div>
   <div class="panel" id="panel-produce">
-    <div class="produce-entry" id="no-topic">
+    <!-- No-source empty state: only shown when no topic AND no files -->
+    <div class="produce-entry" id="no-topic" style="display:none">
       <div class="empty-icon">✦</div>
-      <div class="empty-title">选择内容来源，开始分镜生产</div>
-      <div class="empty-sub">Paperstill 论文选题可加资料补充；也可只上传外部资料单独生产</div>
-      <div class="source-pick">
-        <div class="source-card" onclick="nav('discover')"><h4>📚 Paperstill 论文来源</h4><p>先搜集论文、选中主题，AI 读取论文摘要；如有上传文件，会一起整合作为补充。</p></div>
-        <div class="source-card" onclick="startExternalProduce()"><h4>📎 外部资料来源</h4><p>不选 Paperstill 论文，直接上传 PDF / Word / Markdown，独立生成独白和分镜。</p></div>
+      <div class="empty-title">从选题开始，或直接上传资料</div>
+      <div class="empty-sub">在顶部搜索论文选题，或点击 📎 上传 PDF / Word / Markdown 直接开始</div>
+      <div style="margin-top:20px;display:flex;gap:12px">
+        <button class="btn-primary" onclick="nav('discover')">🔍 去选题</button>
+        <button class="btn-secondary" onclick="document.getElementById('refFileInput').click()">📎 上传资料</button>
       </div>
     </div>
-    <div class="produce-wrap" id="produce-main" style="display:none">
-      <div class="panel-title">分镜工作室 <span class="app-ver-pill" id="panelVersionPill"></span></div>
-      <div class="produce-source-bar" id="produceSourceBar"></div>
-      <div class="selected-bar" style="display:none"><div class="sb-title" id="selTitle">—</div></div>
+
+    <div class="produce-wrap" id="produce-main">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="panel-title" style="margin-bottom:0">生产工作室 <span class="app-ver-pill" id="panelVersionPill"></span></div>
+        <button class="btn-secondary" style="padding:6px 12px;font-size:11px" onclick="resetGen()">↺ 重置</button>
+      </div>
+      <div class="produce-source-bar" id="produceSourceBar" style="margin-bottom:16px"></div>
       <div id="safetyBox"></div>
 
-      <div class="produce-studio" id="produceStudio">
-        <div class="platform-tabs">
+      <!-- ── STEP 2: 脚本生成 ── -->
+      <div class="step-section" id="stepSection2">
+        <div class="step-label">Step 2 · 脚本生成</div>
+        <!-- Platform tabs: long / short -->
+        <div class="platform-tabs" style="margin-bottom:10px">
           <button type="button" class="platform-tab active" id="tab-long" onclick="switchPlatform('long')">
-            <span class="pt-label">长视频线</span>
-            <span class="pt-sub">YouTube · 横屏 16:9</span>
-            <span class="pt-badge">10–20 分钟 · 章节时间轴</span>
+            <span class="pt-label">▶ YouTube 长视频</span>
+            <span class="pt-sub">横屏 16:9 · 中英双语旁白</span>
+            <span class="pt-badge" id="tab-long-badge">8–20 分钟</span>
           </button>
           <button type="button" class="platform-tab" id="tab-short" onclick="switchPlatform('short')">
-            <span class="pt-label">短视频线</span>
-            <span class="pt-sub">TikTok · YouTube Shorts</span>
-            <span class="pt-badge">竖屏 9:16 · 15–90 秒</span>
+            <span class="pt-label">📱 TikTok / Shorts</span>
+            <span class="pt-sub">竖屏 9:16 · 口播 + 配图</span>
+            <span class="pt-badge" id="tab-short-badge">15–90 秒</span>
           </button>
         </div>
-        <div class="platform-toolbar" id="platformToolbar"></div>
+
+        <!-- Script gen area -->
+        <div class="gen-card" id="scriptGenCard">
+          <div id="scriptGenArea">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+              <button type="button" class="btn-primary" id="genScriptBtn" onclick="generateScript()">✦ 生成脚本</button>
+              <button type="button" class="btn-secondary" id="stopScriptBtn" style="display:none" onclick="stopScript()">■ 停止</button>
+              <button type="button" class="btn-secondary" id="regenScriptBtn" style="display:none" onclick="regenScript()">↺ 重新生成</button>
+              <span id="scriptWordCount" style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace"></span>
+            </div>
+            <div id="genScriptLoading" style="display:none">
+              <div class="gen-indicator">
+                <div class="gen-icon-wrap"><div class="gen-ring"></div><div class="gen-ring-2"></div><div class="gen-core"></div></div>
+                <div class="gen-text-col">
+                  <div class="gen-status-line" id="genScriptStatus">正在生成脚本…</div>
+                  <div class="gen-sub-line" id="genScriptSub">读取来源资料…</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="scriptOutputArea" style="display:none">
+            <div class="output-box" id="scriptOutputBox" style="max-height:38vh"></div>
+          </div>
+          <div id="refUsedHintScript" class="ref-used-hint" style="display:none;margin-top:8px"></div>
+        </div>
+      </div>
+
+      <!-- ── STEP 3: 分镜工作室 ── -->
+      <div class="step-section" id="stepSection3" style="margin-top:20px">
+        <div class="step-label">Step 3 · 分镜工作室</div>
+
+        <div class="platform-toolbar" id="platformToolbar" style="margin-bottom:10px"></div>
+
         <div class="studio-layout">
           <div class="studio-main">
-            <div id="genAreaStudio">
-              <button type="button" class="btn-primary full" id="genBtnStudio" onclick="generateActivePlatform()">✦ 生成分镜 + 旁白</button>
+            <div id="genAreaStudio" style="margin-bottom:12px">
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button type="button" class="btn-primary" id="genBtnStudio" onclick="generateActivePlatform()">✦ 生成分镜</button>
+                <button type="button" class="btn-secondary" id="stopStudioBtn" style="display:none" onclick="stopStudio()">■ 停止</button>
+                <button type="button" class="btn-secondary" id="regenStudioBtn" style="display:none" onclick="resetActivePlatform()">↺ 重新生成</button>
+                <span id="wordCountStudio" style="font-size:12px;color:var(--text2);font-family:'DM Mono',monospace"></span>
+              </div>
               <div id="refUsedHintStudio" class="ref-used-hint" style="display:none;margin-top:8px"></div>
             </div>
-            <div id="genLoadingStudio" style="display:none">
+            <div id="genLoadingStudio" style="display:none;margin-bottom:12px">
               <div class="gen-indicator">
                 <div class="gen-icon-wrap"><div class="gen-ring"></div><div class="gen-ring-2"></div><div class="gen-core"></div></div>
                 <div class="gen-text-col">
@@ -817,6 +866,7 @@ body {
                 </div>
               </div>
             </div>
+
             <div id="storyboardPanelStudio" class="storyboard-panel">
               <div class="sb-hdr">
                 <span class="sb-hdr-title" id="storyboardTitle">分镜表</span>
@@ -830,133 +880,73 @@ body {
               <div class="sb-table-wrap" id="storyboardTableWrapStudio"></div>
               <div class="sb-total" id="storyboardTotalStudio"></div>
             </div>
-            <details class="script-collapse" id="scriptCollapse">
+
+            <details class="script-collapse" id="scriptCollapse" style="margin-top:10px">
               <summary>完整 AI 文稿（可折叠）</summary>
               <div class="out-hdr" style="padding:8px 14px 0">
-                <span style="font-size:12px;color:var(--text2)" id="wordCountStudio"></span>
+                <span style="font-size:12px;color:var(--text2)" id="studioScriptWordCount"></span>
                 <button type="button" class="copy-btn" onclick="copyStudioOutput()">复制</button>
-                <button type="button" class="copy-btn" id="btnResetStudio" style="display:none" onclick="resetActivePlatform()">重新生成</button>
               </div>
               <div class="output-box" id="outputBoxStudio"></div>
             </details>
           </div>
+
           <aside class="studio-aside">
             <div class="aside-title">发布助手</div>
             <div class="timeline-bar" id="timelineBar"></div>
             <div class="sb-total" id="timelineMeta" style="margin-bottom:12px"></div>
             <div id="exportCardsStudio"></div>
+
+            <!-- 发布清单 折叠在此 -->
+            <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+              <details id="publishChecklist">
+                <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--text2);list-style:none;display:flex;align-items:center;justify-content:space-between">
+                  <span>🚀 发布清单</span>
+                  <span id="pubProgressLabel" style="font-size:11px;font-family:'DM Mono',monospace">0 / 13</span>
+                </summary>
+                <div style="margin-top:10px">
+                  <div class="progress-wrap" style="margin-bottom:10px"><div class="progress-fill" id="pubProg" style="width:0%"></div></div>
+                  <div id="checklistEl"></div>
+                  <div id="pubSuccess" style="display:none">
+                    <div class="success-box">
+                      <div style="font-size:22px;margin-bottom:6px">🎉</div>
+                      <div style="font-size:14px;font-weight:700;color:var(--green)">全部完成！</div>
+                    </div>
+                  </div>
+                  <button class="btn-secondary full" style="margin-top:10px;width:100%;justify-content:center" onclick="newContent()">＋ 新建内容</button>
+                </div>
+              </details>
+            </div>
           </aside>
         </div>
       </div>
 
-      <div id="legacyProduce" style="display:none">
-      <!-- BATCH 1: YouTube scripts -->
-      <div class="gen-step-block" id="stepBlock1">
-        <div class="gen-step-hdr">
-          <span class="gen-lbl">长视频线</span>
-          <span class="gen-step-meta">分镜表 + 旁白 · 10-20min · 16:9（综合 60 篇摘要 + 上传资料）</span>
-          <button type="button" class="gen-step-reset" id="stepReset1" style="display:none" onclick="resetBatch(1)">重新生成</button>
-        </div>
-        <div id="genArea1">
-          <div class="gen-card">
-            <div class="gen-tags">
-            <span class="badge" style="border-color:#7c6cfc40;color:var(--accent)">YouTube 中文 8-10min</span>
-            <span class="badge" style="border-color:#4fd1c540;color:var(--teal)">YouTube English 8-10min</span>
-          </div>
-            <button class="btn-primary full" id="genBtn1" onclick="generateBatch1()">✦ 生成分镜表 + 旁白</button>
-          </div>
-        </div>
-      </div>
-      <div id="genLoading1" style="display:none">
-        <div class="gen-indicator">
-          <div class="gen-icon-wrap"><div class="gen-ring"></div><div class="gen-ring-2"></div><div class="gen-core"></div></div>
-          <div class="gen-text-col">
-            <div class="gen-status-line">正在生成 YouTube 脚本</div>
-            <div class="gen-sub-line" id="genSubLine1">构建脚本结构...</div>
-          </div>
-        </div>
-      </div>
-      <div id="outputArea1" style="display:none">
-        <div class="out-hdr">
-          <span style="font-size:12px;color:var(--text2)" id="wordCount1"></span>
-          <button class="copy-btn" id="copyBtn1" onclick="copyOutput(1)">复制</button>
-        </div>
-        <div class="output-box" id="outputBox1"></div>
-        <div id="refUsedHint1" class="ref-used-hint" style="display:none"></div>
-      </div>
-      <div id="storyboardPanel" class="storyboard-panel" style="display:none">
-        <div class="sb-hdr">
-          <span class="sb-hdr-title">分镜管理</span>
-          <div class="sb-hdr-actions">
-            <button type="button" onclick="parseStoryboardFromOutput()">从文稿解析</button>
-            <button type="button" onclick="addStoryboardRow()">+ 镜头</button>
-            <button type="button" onclick="exportStoryboardNarration()">导出旁白稿</button>
-            <button type="button" onclick="exportStoryboardTable()">复制分镜表</button>
-          </div>
-        </div>
-        <div class="sb-table-wrap" id="storyboardTableWrap"></div>
-        <div class="sb-total" id="storyboardTotal"></div>
-      </div>
-
-      <!-- BATCH 2: TikTok + images -->
-      <div class="gen-step-block" id="stepBlock2" style="margin-top:12px">
-        <div class="gen-step-hdr">
-          <span class="gen-lbl">短视频线</span>
-          <span class="gen-step-meta">TikTok / Shorts · 60s · 配图（沿用长视频分镜结论）</span>
-          <button type="button" class="gen-step-reset" id="stepReset2" style="display:none" onclick="resetBatch(2)">重新生成</button>
-        </div>
-        <div id="genArea2">
-          <div class="gen-card">
-            <div class="gen-tags">
-            <span class="badge" style="border-color:#7c6cfc40;color:var(--accent)">TikTok 中文 60s</span>
-            <span class="badge" style="border-color:#4fd1c540;color:var(--teal)">TikTok English 60s</span>
-            <span class="badge b-safe">配图提示词 ×3</span>
-          </div>
-            <button class="btn-primary full" id="genBtn2" onclick="generateBatch2()">✦ 生成 TikTok + 配图</button>
-          </div>
-        </div>
-      </div>
-      <div id="genLoading2" style="display:none;margin-top:12px">
-        <div class="gen-indicator">
-          <div class="gen-icon-wrap"><div class="gen-ring"></div><div class="gen-ring-2"></div><div class="gen-core"></div></div>
-          <div class="gen-text-col">
-            <div class="gen-status-line">正在生成 TikTok 脚本</div>
-            <div class="gen-sub-line" id="genSubLine2">提炼核心钩子...</div>
-          </div>
-        </div>
-      </div>
-      <div id="outputArea2" style="display:none;margin-top:12px">
-        <div class="out-hdr">
-          <span style="font-size:12px;color:var(--text2)" id="wordCount2"></span>
-          <button class="copy-btn" id="copyBtn2" onclick="copyOutput(2)">复制</button>
-        </div>
-        <div class="output-box" id="outputBox2"></div>
-      </div>
-      </div>
-
-      <div id="publishRow" style="display:none;margin-top:16px">
-        <button class="btn-primary full" onclick="nav('publish')">进入发布清单 →</button>
+      <!-- Hidden legacy output boxes needed by JS -->
+      <div style="display:none">
+        <div id="outputBox1"></div>
+        <div id="outputBox2"></div>
+        <div id="refUsedHint1"></div>
+        <div id="publishRow"></div>
+        <div id="legacyProduce"></div>
+        <div id="stepBlock1"></div><div id="stepBlock2"></div>
+        <div id="genArea1"></div><div id="genArea2"></div>
+        <div id="genLoading1"></div><div id="genLoading2"></div>
+        <div id="outputArea1"></div><div id="outputArea2"></div>
+        <div id="wordCount1"></div><div id="wordCount2"></div>
+        <div id="copyBtn1"></div><div id="copyBtn2"></div>
+        <div id="genBtn1"></div><div id="genBtn2"></div>
+        <div id="stepReset1"></div><div id="stepReset2"></div>
+        <div id="genSubLine1"></div><div id="genSubLine2"></div>
+        <div id="storyboardPanel"></div>
+        <div id="storyboardTableWrap"></div>
+        <div id="storyboardTotal"></div>
+        <div id="btnResetStudio"></div>
       </div>
     </div>
   </div>
 
-  <!-- PUBLISH -->
-  <div class="panel" id="panel-publish">
-    <div class="publish-wrap">
-      <div class="panel-title">发布中心</div>
-      <div class="panel-sub" id="pubSub">折叠分组 · 关联分镜 · 打勾会保存</div>
-      <div class="progress-wrap"><div class="progress-fill" id="pubProg" style="width:0%"></div></div>
-      <div id="checklistEl"></div>
-      <div id="pubSuccess" style="display:none">
-        <div class="success-box">
-          <div style="font-size:28px;margin-bottom:10px">🎉</div>
-          <div style="font-size:17px;font-weight:700;color:var(--green)">全部完成！</div>
-          <div style="font-size:13px;color:var(--text2);margin-top:6px">这条内容已全平台发布</div>
-        </div>
-      </div>
-      <button class="btn-primary full" style="margin-top:24px" onclick="newContent()">＋ 新建内容</button>
-    </div>
-  </div>
+  <!-- PUBLISH panel: kept but hidden, redirects to produce -->
+  <div class="panel" id="panel-publish" style="display:none!important"></div>
 
 </div>
 
@@ -1121,12 +1111,13 @@ function dbg(msg){
 function nav(p){
   document.querySelectorAll('.panel').forEach(function(e){e.classList.remove('active');});
   document.querySelectorAll('.nav-item,.mob-btn').forEach(function(e){e.classList.remove('active');});
+  // redirect publish to produce
+  if(p==='publish')p='produce';
   document.getElementById('panel-'+p).classList.add('active');
   var ni=document.getElementById('nav-'+p);if(ni)ni.classList.add('active');
   var mi=document.getElementById('mob-'+p);if(mi)mi.classList.add('active');
   updateTopBar(p);
   if(p==='produce')updateProduce();
-  if(p==='publish')buildChecklist();
   if(p==='favorites')renderFavorites();
   window.scrollTo(0,0);
 }
@@ -1360,9 +1351,9 @@ function showKeyModal(){
 function closeKeyModal(){document.getElementById('keyModal').style.display='none';}
 function saveKey(){
   var k=document.getElementById('keyInput').value.trim();
-  if(!k||k.indexOf('sk-')<0){
+  if(!k){
     document.getElementById('keyMsg').style.color='var(--red)';
-    document.getElementById('keyMsg').textContent='Key应以sk-开头';return;
+    document.getElementById('keyMsg').textContent='请输入API Key';return;
   }
   localStorage.setItem('claude_api_key',k);
   var b=document.getElementById('baseInput').value.trim();
@@ -2261,17 +2252,17 @@ function showToast(msg){
    PRODUCE
 ═══════════════════════════════════════════ */
 function updateProduce(){
+  var noTopic=document.getElementById('no-topic');
+  var main=document.getElementById('produce-main');
   if(!hasProduceSource()){
-    document.getElementById('no-topic').style.display='flex';
-    document.getElementById('produce-main').style.display='none';
+    if(noTopic)noTopic.style.display='flex';
+    if(main)main.style.display='none';
     updateTopBar('produce');
     return;
   }
-  document.getElementById('no-topic').style.display='none';
-  document.getElementById('produce-main').style.display='block';
-  var st=document.getElementById('selTitle');
+  if(noTopic)noTopic.style.display='none';
+  if(main)main.style.display='block';
   renderProduceSourceBar();
-  if(st)st.textContent=getProduceSourceLabel();
   updateTopBar('produce');
   var sb=document.getElementById('safetyBox');
   if(selectedTopic&&selectedTopic.safety_level==='warn')
@@ -2288,6 +2279,7 @@ function updateProduce(){
   renderStoryboardTable();
   renderExportCards();
   updateStudioOutputView();
+  buildChecklist();
 }
 function renderProduceSourceBar(){
   var el=document.getElementById('produceSourceBar');
@@ -2602,10 +2594,146 @@ function switchPlatform(p){
   renderStoryboardTable();
   renderExportCards();
   updateStudioOutputView();
+  // Update step2 script output to match active platform
+  syncScriptOutputToPlatform();
   var btn=document.getElementById('genBtnStudio');
-  if(btn)btn.textContent=p==='long'?'✦ 生成长视频分镜 + 旁白':'✦ 生成短视频分镜 + 旁白';
+  if(btn)btn.textContent=p==='long'?'✦ 生成分镜':'✦ 生成分镜';
   var title=document.getElementById('storyboardTitle');
   if(title)title.textContent=p==='long'?'YouTube 分镜表 · 16:9':'TikTok / Shorts 分镜表 · 9:16';
+  // Show/hide regen button
+  var regen=document.getElementById('regenStudioBtn');
+  var shots=getActiveShots();
+  if(regen)regen.style.display=(shots.length||platformOutputs[p])?'inline-flex':'none';
+  // Sync script regen button
+  var scriptRegen=document.getElementById('regenScriptBtn');
+  if(scriptRegen)scriptRegen.style.display=scriptOutputs[p]?'inline-flex':'none';
+}
+
+// Script outputs per platform (step 2)
+var scriptOutputs={long:'',short:''};
+var _scriptAbort=null;
+
+function syncScriptOutputToPlatform(){
+  var box=document.getElementById('scriptOutputBox');
+  var area=document.getElementById('scriptOutputArea');
+  var wc=document.getElementById('scriptWordCount');
+  var text=scriptOutputs[activePlatform]||'';
+  if(box)box.textContent=text;
+  if(area)area.style.display=text?'block':'none';
+  if(wc)wc.textContent=text?('共'+text.length+'字'):'';
+}
+
+async function generateScript(){
+  if(!hasProduceSource()){showToast('请先选择选题或上传资料');return;}
+  var key=getApiKey();if(!key){showKeyModal();return;}
+  var p=activePlatform;
+  var ps=platformSettings[p];
+  var genBtn=document.getElementById('genScriptBtn');
+  var stopBtn=document.getElementById('stopScriptBtn');
+  var regenBtn=document.getElementById('regenScriptBtn');
+  var loading=document.getElementById('genScriptLoading');
+  var area=document.getElementById('scriptOutputArea');
+  var box=document.getElementById('scriptOutputBox');
+  var wc=document.getElementById('scriptWordCount');
+  if(genBtn)genBtn.style.display='none';
+  if(stopBtn)stopBtn.style.display='inline-flex';
+  if(regenBtn)regenBtn.style.display='none';
+  if(loading)loading.style.display='block';
+  if(area)area.style.display='none';
+  if(box)box.textContent='';
+  if(wc)wc.textContent='';
+  var ref=buildRefContext();
+  var statusEl=document.getElementById('genScriptStatus');
+  var subEl=document.getElementById('genScriptSub');
+  if(statusEl)statusEl.textContent=p==='long'?'正在生成 YouTube 脚本…':'正在生成 TikTok 脚本…';
+  var msgs=p==='long'
+    ?['规划章节结构…','撰写中文旁白…','撰写英文旁白…','精调叙事节奏…']
+    :['3秒钩子…','压缩口播…','配图提示词…','口播节奏校对…'];
+  var timerIdx=0;
+  var timer=setInterval(function(){timerIdx=(timerIdx+1)%msgs.length;if(subEl)subEl.textContent=msgs[timerIdx];},2200);
+
+  var msg;
+  if(p==='long'){
+    msg=getTopicContext(ref.textBlock)
+      +'PLATFORM: YouTube long-form script. Target ~'+ps.targetSec+' seconds (~'+formatSec(ps.targetSec)+').\n\n'
+      +'OUTPUT: Full bilingual script.\n'
+      +'PART A: Chinese narration with *[Visual: ...]* tags after each paragraph.\n'
+      +'PART B: English narration with *[Visual: ...]* tags.\n\n'
+      +'Structure: Hook 15s → Background → Key Findings+Data → Why It Matters → Caveats → Action Tips → Outro\n'
+      +'Rules: research suggests only; correlation not causation; vivid analogies; literary flair.';
+  }else{
+    msg=getTopicContext(ref.textBlock)
+      +'PLATFORM: TikTok / YouTube Shorts vertical 9:16. Total ~'+ps.targetSec+' seconds.\n\n'
+      +'OUTPUT:\n'
+      +'### 中文口播稿（60秒，每句≤12字，前3秒必须是最震撼结论）\n'
+      +'### English Script (casual punchy, ~60s)\n'
+      +'### 配图提示词（Kling/Veo/Ideogram）\n'
+      +'Cover 16:9: ...\nData Infographic: ...\nMechanism/Tips: ...\n\n'
+      +'Rules: hook first; punchy; correlation not causation.';
+  }
+  var buf='';
+  _scriptAbort=new AbortController();
+  var aborted=false;
+  try{
+    // Use streaming
+    var proxy=getProxyUrl();
+    var apiKey=getApiKey();
+    var userContent=ref.imageBlocks&&ref.imageBlocks.length>0
+      ?ref.imageBlocks.map(function(img){return{type:'image',source:{type:'base64',media_type:img.mediaType,data:img.b64}};}).concat([{type:'text',text:msg}])
+      :msg;
+    var body=JSON.stringify({model:getApiModel(),max_tokens:8000,stream:true,
+      messages:[{role:'system',content:getDocStyle()},{role:'user',content:userContent}]});
+    var res;
+    if(proxy){
+      res=await fetch(proxy,{method:'POST',signal:_scriptAbort.signal,
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'x-base-url':getApiBase()},body:body});
+    }else{
+      res=await fetch(getApiBase().replace(/\/+$/,'')+'/chat/completions',{method:'POST',signal:_scriptAbort.signal,
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:body});
+    }
+    if(!res.ok){var err=await res.text();throw new Error('API '+res.status+': '+err.slice(0,150));}
+    clearInterval(timer);
+    if(loading)loading.style.display='none';
+    if(area)area.style.display='block';
+    var reader=res.body.getReader();var dec=new TextDecoder();var going=true;
+    while(going){
+      var chunk=await reader.read();if(chunk.done){going=false;break;}
+      dec.decode(chunk.value).split('\n').forEach(function(ln){
+        if(ln.indexOf('data: ')===0){
+          var d=ln.slice(6).trim();if(d==='[DONE]')return;
+          try{var obj=JSON.parse(d);var delta=obj.choices&&obj.choices[0]&&obj.choices[0].delta;
+            if(delta&&delta.content){buf+=delta.content;if(box)box.textContent=buf;if(box)box.scrollTop=box.scrollHeight;if(wc)wc.textContent='生成中… '+buf.length+'字';}}catch(ex){}
+        }
+      });
+    }
+    scriptOutputs[p]=buf;
+    if(wc)wc.textContent='共'+buf.length+'字';
+  }catch(e){
+    aborted=e.name==='AbortError';
+    clearInterval(timer);
+    if(!aborted)showToast('脚本生成出错：'+e.message);
+    if(loading)loading.style.display='none';
+    if(buf){if(area)area.style.display='block';scriptOutputs[p]=buf;}
+  }
+  if(genBtn)genBtn.style.display='inline-flex';
+  if(stopBtn)stopBtn.style.display='none';
+  if(regenBtn)regenBtn.style.display='inline-flex';
+  _scriptAbort=null;
+}
+
+function stopScript(){
+  if(_scriptAbort)_scriptAbort.abort();
+}
+function regenScript(){
+  scriptOutputs[activePlatform]='';
+  syncScriptOutputToPlatform();
+  generateScript();
+}
+
+var _studioAbort=null;
+
+function stopStudio(){
+  if(_studioAbort)_studioAbort.abort();
 }
 
 function formatSec(sec){
@@ -2918,8 +3046,10 @@ function updateRefUsedHintStudio(){
 function updateStudioOutputView(){
   var box=document.getElementById('outputBoxStudio');
   if(box)box.textContent=platformOutputs[activePlatform]||'';
-  var wc=document.getElementById('wordCountStudio');
+  var wc=document.getElementById('studioScriptWordCount');
   if(wc)wc.textContent=(platformOutputs[activePlatform]||'').length?('共'+(platformOutputs[activePlatform].length)+'字'):'';
+  var wc2=document.getElementById('wordCountStudio');
+  if(wc2&&!(platformOutputs[activePlatform]||'').length)wc2.textContent='';
 }
 
 function copyStudioOutput(){
@@ -2937,8 +3067,10 @@ function resetActivePlatform(){
   resetBatch(activePlatform==='long'?1:2);
   resetStoryboard();
   updateStudioOutputView();
-  var btn=document.getElementById('btnResetStudio');
-  if(btn)btn.style.display='none';
+  var regen=document.getElementById('regenStudioBtn');
+  if(regen)regen.style.display='none';
+  var ga=document.getElementById('genBtnStudio');
+  if(ga)ga.disabled=false;
 }
 
 function updateRefUsedHint(){
@@ -2961,8 +3093,11 @@ async function generateBatch1(){
   activePlatform='long';
   var ps=platformSettings.long;
   var btn=document.getElementById('genBtnStudio');
+  var stopBtn=document.getElementById('stopStudioBtn');
+  var regenBtn=document.getElementById('regenStudioBtn');
   if(btn)btn.disabled=true;
-  document.getElementById('genAreaStudio').style.display='none';
+  if(stopBtn)stopBtn.style.display='inline-flex';
+  if(regenBtn)regenBtn.style.display='none';
   document.getElementById('genLoadingStudio').style.display='block';
   document.getElementById('genStatusStudio').textContent='正在生成 YouTube 长视频分镜…';
   var sourceLabel=getSourcePromptLabel();
@@ -2978,32 +3113,43 @@ async function generateBatch1(){
   var outEl=document.getElementById('outputBoxStudio');
   outEl.textContent='';
   var buf1='';
+  _studioAbort=new AbortController();
   try{
-    await callClaudeStreamWithImages(getDocStyle(),msg,ref.imageBlocks,function(chunk){
-      if(document.getElementById('genLoadingStudio').style.display!=='none'){
-        clearInterval(timer);
-        document.getElementById('genLoadingStudio').style.display='none';
-        document.getElementById('genAreaStudio').style.display='block';
-        if(btn)btn.disabled=false;
-        document.getElementById('btnResetStudio').style.display='inline-block';
-      }
-      buf1+=chunk;outEl.textContent=buf1;outEl.scrollTop=outEl.scrollHeight;
-      document.getElementById('wordCountStudio').textContent='生成中… '+buf1.length+'字';
-    });
-    platformOutputs.long=buf1;
-    outputFull=buf1;
+    var proxy=getProxyUrl();var apiKey=getApiKey();
+    var userContent=ref.imageBlocks&&ref.imageBlocks.length>0
+      ?ref.imageBlocks.map(function(img){return{type:'image',source:{type:'base64',media_type:img.mediaType,data:img.b64}};}).concat([{type:'text',text:msg+(ref.imageBlocks.length?' (请结合上方图片中的信息一并参考)':'')}])
+      :msg;
+    var body=JSON.stringify({model:getApiModel(),max_tokens:8000,stream:true,messages:[{role:'system',content:getDocStyle()},{role:'user',content:userContent}]});
+    var res;
+    if(proxy){res=await fetch(proxy,{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','x-api-key':apiKey,'x-base-url':getApiBase()},body:body});}
+    else{res=await fetch(getApiBase().replace(/\/+$/,'')+'/chat/completions',{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:body});}
+    if(!res.ok){var err=await res.text();throw new Error('API '+res.status+': '+err.slice(0,150));}
+    clearInterval(timer);
+    document.getElementById('genLoadingStudio').style.display='none';
+    if(btn)btn.disabled=false;
+    var reader=res.body.getReader();var dec=new TextDecoder();var going=true;
+    while(going){
+      var chunk=await reader.read();if(chunk.done){going=false;break;}
+      dec.decode(chunk.value).split('\n').forEach(function(ln){
+        if(ln.indexOf('data: ')===0){var d=ln.slice(6).trim();if(d==='[DONE]')return;
+          try{var obj=JSON.parse(d);var delta=obj.choices&&obj.choices[0]&&obj.choices[0].delta;
+            if(delta&&delta.content){buf1+=delta.content;outEl.textContent=buf1;outEl.scrollTop=outEl.scrollHeight;document.getElementById('wordCountStudio').textContent='生成中… '+buf1.length+'字';}}catch(ex){}}
+      });
+    }
+    platformOutputs.long=buf1;outputFull=buf1;
     document.getElementById('outputBox1').textContent=buf1;
     applyStoryboardFromGeneration(buf1,'long');
-    updateStudioOutputView();
-    updateRefUsedHintStudio();
-    checkPublishRow();
+    updateStudioOutputView();updateRefUsedHintStudio();checkPublishRow();
   }catch(e){
     clearInterval(timer);
     document.getElementById('genLoadingStudio').style.display='none';
-    document.getElementById('genAreaStudio').style.display='block';
     if(btn)btn.disabled=false;
-    alert('生成出错：'+e.message);
+    if(e.name!=='AbortError')alert('生成出错：'+e.message);
+    if(buf1){platformOutputs.long=buf1;applyStoryboardFromGeneration(buf1,'long');updateStudioOutputView();}
   }
+  if(stopBtn)stopBtn.style.display='none';
+  if(regenBtn)regenBtn.style.display='inline-flex';
+  _studioAbort=null;
 }
 
 async function generateBatch2(){
@@ -3013,8 +3159,11 @@ async function generateBatch2(){
   activePlatform='short';
   var ps=platformSettings.short;
   var btn=document.getElementById('genBtnStudio');
+  var stopBtn=document.getElementById('stopStudioBtn');
+  var regenBtn=document.getElementById('regenStudioBtn');
   if(btn)btn.disabled=true;
-  document.getElementById('genAreaStudio').style.display='none';
+  if(stopBtn)stopBtn.style.display='inline-flex';
+  if(regenBtn)regenBtn.style.display='none';
   document.getElementById('genLoadingStudio').style.display='block';
   document.getElementById('genStatusStudio').textContent='正在生成 TikTok / Shorts 分镜…';
   var plats=(ps.platforms||['tiktok','shorts']).join(' + ');
@@ -3031,33 +3180,46 @@ async function generateBatch2(){
   var outEl=document.getElementById('outputBoxStudio');
   outEl.textContent='';
   var buf2='';
+  _studioAbort=new AbortController();
   try{
-    await callClaudeStreamWithImages(getDocStyle(),msg,ref.imageBlocks,function(chunk){
-      if(document.getElementById('genLoadingStudio').style.display!=='none'){
-        clearInterval(timer);
-        document.getElementById('genLoadingStudio').style.display='none';
-        document.getElementById('genAreaStudio').style.display='block';
-        if(btn)btn.disabled=false;
-        document.getElementById('btnResetStudio').style.display='inline-block';
-      }
-      buf2+=chunk;outEl.textContent=buf2;outEl.scrollTop=outEl.scrollHeight;
-      document.getElementById('wordCountStudio').textContent='生成中… '+buf2.length+'字';
-    });
+    var proxy=getProxyUrl();var apiKey=getApiKey();
+    var userContent=ref.imageBlocks&&ref.imageBlocks.length>0
+      ?ref.imageBlocks.map(function(img){return{type:'image',source:{type:'base64',media_type:img.mediaType,data:img.b64}};}).concat([{type:'text',text:msg+(ref.imageBlocks.length?' (请结合上方图片中的信息一并参考)':'')}])
+      :msg;
+    var body=JSON.stringify({model:getApiModel(),max_tokens:8000,stream:true,messages:[{role:'system',content:getDocStyle()},{role:'user',content:userContent}]});
+    var res;
+    if(proxy){res=await fetch(proxy,{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','x-api-key':apiKey,'x-base-url':getApiBase()},body:body});}
+    else{res=await fetch(getApiBase().replace(/\/+$/,'')+'/chat/completions',{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:body});}
+    if(!res.ok){var err=await res.text();throw new Error('API '+res.status+': '+err.slice(0,150));}
+    clearInterval(timer);
+    document.getElementById('genLoadingStudio').style.display='none';
+    if(btn)btn.disabled=false;
+    var reader=res.body.getReader();var dec=new TextDecoder();var going=true;
+    while(going){
+      var chunk=await reader.read();if(chunk.done){going=false;break;}
+      dec.decode(chunk.value).split('\n').forEach(function(ln){
+        if(ln.indexOf('data: ')===0){var d=ln.slice(6).trim();if(d==='[DONE]')return;
+          try{var obj=JSON.parse(d);var delta=obj.choices&&obj.choices[0]&&obj.choices[0].delta;
+            if(delta&&delta.content){buf2+=delta.content;outEl.textContent=buf2;outEl.scrollTop=outEl.scrollHeight;document.getElementById('wordCountStudio').textContent='生成中… '+buf2.length+'字';}}catch(ex){}}
+      });
+    }
     platformOutputs.short=buf2;
     document.getElementById('outputBox2').textContent=buf2;
     outputFull=(platformOutputs.long||'')+'\n\n---\n\n'+buf2;
     applyStoryboardFromGeneration(buf2,'short');
-    updateStudioOutputView();
-    updateRefUsedHintStudio();
+    updateStudioOutputView();updateRefUsedHintStudio();
     if(activePlatform==='short')switchPlatform('short');
     checkPublishRow();
   }catch(e){
     clearInterval(timer);
     document.getElementById('genLoadingStudio').style.display='none';
-    document.getElementById('genAreaStudio').style.display='block';
     if(btn)btn.disabled=false;
-    alert('生成出错：'+e.message);
+    if(e.name!=='AbortError')alert('生成出错：'+e.message);
+    if(buf2){platformOutputs.short=buf2;applyStoryboardFromGeneration(buf2,'short');updateStudioOutputView();}
   }
+  if(stopBtn)stopBtn.style.display='none';
+  if(regenBtn)regenBtn.style.display='inline-flex';
+  _studioAbort=null;
 }
 
 function checkPublishRow(){
@@ -3073,10 +3235,6 @@ function resetBatch(n){
   if(activePlatform===p){
     resetStoryboard();
     updateStudioOutputView();
-    var btn=document.getElementById('btnResetStudio');
-    if(btn)btn.style.display='none';
-    var ga=document.getElementById('genAreaStudio');
-    if(ga)ga.style.display='block';
     var gb=document.getElementById('genBtnStudio');
     if(gb)gb.disabled=false;
   }
@@ -3120,9 +3278,11 @@ function buildPlatformPubBlock(platform){
     +'</p>';
 }
 function buildChecklist(){
+  var el=document.getElementById('checklistEl');
+  if(!el)return;
   stGet(SK_CHECK).then(function(saved){
     checkState=saved||{};
-    document.getElementById('checklistEl').innerHTML=PUB_SECTIONS.map(function(sec){
+    el.innerHTML=PUB_SECTIONS.map(function(sec){
       var body=sec.dynamic?buildPlatformPubBlock(sec.dynamic):(sec.items||[]).map(function(item){
         return '<div class="check-item'+(checkState[item.id]?' done':'')+'" id="ci_'+item.id+'" onclick="toggleCheck(\''+item.id+'\')"><div class="chk-box" id="cb_'+item.id+'">'+(checkState[item.id]?'✓':'')+'</div><div><div class="chk-label">'+item.l+'</div><div class="chk-desc">'+item.d+'</div></div></div>';
       }).join('');
@@ -3131,7 +3291,8 @@ function buildChecklist(){
       return '<details class="pub-section"'+(sec.open?' open':'')+'><summary>'+sec.title+' <span class="pub-sec-prog">'+(tn?dn+'/'+tn:'')+'</span></summary><div class="pub-section-body">'+body+'</div></details>';
     }).join('');
     updProg();
-    document.getElementById('pubSuccess').style.display='none';
+    var ps=document.getElementById('pubSuccess');
+    if(ps)ps.style.display='none';
   });
 }
 function toggleCheck(id){
@@ -3143,9 +3304,12 @@ function toggleCheck(id){
 }
 function updProg(){
   var done=Object.values(checkState).filter(Boolean).length,total=CL.length;
-  document.getElementById('pubProg').style.width=(done/total*100)+'%';
-  document.getElementById('pubSub').textContent=done+' / '+total+' 完成';
-  document.getElementById('pubSuccess').style.display=done===total?'block':'none';
+  var progEl=document.getElementById('pubProg');
+  if(progEl)progEl.style.width=(done/total*100)+'%';
+  var lblEl=document.getElementById('pubProgressLabel');
+  if(lblEl)lblEl.textContent=done+' / '+total;
+  var ps=document.getElementById('pubSuccess');
+  if(ps)ps.style.display=done===total?'block':'none';
 }
 function newContent(){
   selectedTopic=null;outputFull='';checkState={};window._topics=[];
@@ -3160,7 +3324,7 @@ function newContent(){
 /* ═══════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════ */
-initTags();buildChecklist();updateKeyStatus();initAppVersion();
+initTags();updateKeyStatus();initAppVersion();
 mountWorkspaceSearch('heroSearchSlot');
 updateTopBar('discover');
 loadPersistedRefFiles().then(function(){
