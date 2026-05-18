@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-<!-- Paperstill index.html v2.4.1 · 2026-05-18 · 保存时请重命名为 index-v2.4.1.html 便于回溯 -->
+<!-- Paperstill index.html v2.4.2 · 2026-05-18 · 保存时请重命名为 index-v2.4.2.html 便于回溯 -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Paperstill v2.4.1</title>
+<title>Paperstill v2.4.2</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&display=swap');
 
@@ -658,7 +658,9 @@ body {
   .discover-hero { padding-top: 16px; }
   .hero-title { font-size: 22px; }
   .top-bar-title { font-size: 17px; }
-  body { padding-bottom: 64px; }
+  body { padding-bottom: 88px; }
+  #stepSection3, .produce-wrap { padding-bottom: 24px; }
+  #genBtnStudio { scroll-margin-bottom: 96px; }
 }
 @media(min-width: 701px) { .mob-nav { display: none !important; } }
 </style>
@@ -997,7 +999,7 @@ var selectedTopic=null,outputFull='',checkState={};
 var SK_STATE='crawl_state2',SK_PAPERS='paper_db2',SK_SCORED='scored_db2',SK_REF='ref_files_v1';
 var SK_HIST='paperstill_hist';
 var SCORE_N=60,FETCH_N=60,CRAWL_DIRS_N=20;
-var APP_VERSION='2.4.1';
+var APP_VERSION='2.4.2';
 var APP_BUILD='2026-05-18';
 var _produceSessionKey='';
 var SK_CHECK='pub_check_v1';
@@ -2711,6 +2713,7 @@ function setStudioState(state){
     if(stopBtn)stopBtn.style.display='inline-flex';
     if(regenBtn)regenBtn.style.display='none';
     if(loading)loading.style.display='block';
+    updateStudioProgressLabel(true);
   }else if(state==='done'||state==='stopped'){
     if(genBtn)genBtn.style.display='none';
     if(stopBtn)stopBtn.style.display='none';
@@ -2729,17 +2732,13 @@ function switchPlatform(p){
   renderStoryboardTable();
   renderExportCards();
   updateStudioOutputView();
-  // Update step2 script output to match active platform
   syncScriptOutputToPlatform();
   var btn=document.getElementById('genBtnStudio');
-  if(btn)btn.textContent=p==='long'?'✦ 生成分镜':'✦ 生成分镜';
+  if(btn)btn.textContent='✦ 生成分镜';
   var title=document.getElementById('storyboardTitle');
   if(title)title.textContent=p==='long'?'YouTube 分镜表 · 16:9':'TikTok / Shorts 分镜表 · 9:16';
-  // Show/hide regen button
-  var regen=document.getElementById('regenStudioBtn');
-  var shots=getActiveShots();
-  if(regen)regen.style.display=(shots.length||platformOutputs[p])?'inline-flex':'none';
-  // Sync script regen button
+  var hasOut=(platformOutputs[p]||'').length>10||(storyboards[p]||[]).length>0;
+  setStudioState(hasOut?'done':'idle');
   var scriptRegen=document.getElementById('regenScriptBtn');
   if(scriptRegen)scriptRegen.style.display=scriptOutputs[p]?'inline-flex':'none';
 }
@@ -2968,6 +2967,60 @@ function resetStoryboard(){
   renderExportCards();
 }
 
+function isShotTypeToken(t){
+  return /^(hook|a-roll|b-roll|data|chapter|text-card)$/i.test((t||'').trim());
+}
+function looksLikeVisualPrompt(s){
+  if(!s||!s.trim())return false;
+  return /cinematic|full shot|close-up|b-roll|9:16|16:9|camera|overlay|video style|in frame|call-to-action text/i.test(s);
+}
+function normalizeShotFields(shot){
+  var n=(shot.narration||'').trim(),v=(shot.visual||'').trim();
+  if(looksLikeVisualPrompt(n)&&!looksLikeVisualPrompt(v)){
+    shot.visual=n;shot.narration=v;
+  }else if(looksLikeVisualPrompt(n)&&looksLikeVisualPrompt(v)&&n.length>v.length){
+    shot.visual=n;shot.narration='';
+  }
+  return shot;
+}
+function parseShotPipeParts(p){
+  if(p[0]==='long'||p[0]==='short')p=p.slice(1);
+  if(p.length<4||isNaN(parseInt(p[0],10)))return null;
+  var typeIdx=-1;
+  for(var i=2;i<p.length;i++){if(isShotTypeToken(p[i])){typeIdx=i;break;}}
+  if(typeIdx>=0){
+    return normalizeShotFields({
+      no:parseInt(p[0],10),
+      dur:parseInt(p[1],10)||0,
+      type:(p[typeIdx]||'A-roll').trim(),
+      narration:(p[typeIdx+1]||'').trim(),
+      visual:(p[typeIdx+2]||'').trim(),
+      onScreen:(p[typeIdx+3]||'').trim(),
+      notes:(p[typeIdx+4]||'').trim()
+    });
+  }
+  if(p.length>=4&&!isShotTypeToken(p[2])){
+    return normalizeShotFields({
+      no:parseInt(p[0],10),
+      dur:parseInt(p[1],10)||0,
+      type:'A-roll',
+      narration:(p[2]||'').trim(),
+      visual:(p[3]||'').trim(),
+      onScreen:(p[4]||'').trim(),
+      notes:(p[5]||'').trim()
+    });
+  }
+  return normalizeShotFields({
+    no:parseInt(p[0],10)||0,
+    dur:parseInt(p[1],10)||0,
+    type:(p[2]||'A-roll').trim(),
+    narration:(p[3]||'').trim(),
+    visual:(p[4]||'').trim(),
+    onScreen:(p[5]||'').trim(),
+    notes:(p[6]||'').trim()
+  });
+}
+
 function parseStoryboardFromText(text,platform){
   platform=platform||activePlatform;
   var shots=[];
@@ -2975,24 +3028,17 @@ function parseStoryboardFromText(text,platform){
     line=line.trim();
     var i=line.indexOf('SHOT|');
     if(i<0)return;
-    var p=line.slice(i+5).split('|');
-    if(p[0]==='long'||p[0]==='short')p=p.slice(1);
-    if(p.length<4)return;
-    function isShotType(t){return /^(hook|A-roll|B-roll|data|chapter)$/i.test((t||'').trim());}
-    if(p.length>=4&&!isShotType(p[2])&&!isNaN(parseInt(p[0],10))){
-      shots.push({id:'sb_'+shots.length,no:parseInt(p[0],10),dur:parseInt(p[1],10)||0,type:'A-roll',narration:(p[2]||'').trim(),visual:(p[3]||'').trim(),onScreen:'',notes:(p[4]||'').trim(),status:'draft'});
-      return;
-    }
-    var shotNo=parseInt(p[0],10);
+    var parsed=parseShotPipeParts(line.slice(i+5).split('|'));
+    if(!parsed||!parsed.no)return;
     shots.push({
       id:'sb_'+shots.length+'_'+Date.now(),
-      no:shotNo||shots.length+1,
-      dur:parseInt(p[1],10)||0,
-      type:(p[2]||'A-roll').trim(),
-      narration:(p[3]||'').trim(),
-      visual:(p[4]||'').trim(),
-      onScreen:(p[5]||'').trim(),
-      notes:(p[6]||'').trim(),
+      no:parsed.no||shots.length+1,
+      dur:parsed.dur||0,
+      type:parsed.type||'A-roll',
+      narration:parsed.narration||'',
+      visual:parsed.visual||'',
+      onScreen:parsed.onScreen||'',
+      notes:parsed.notes||'',
       status:'draft'
     });
   });
@@ -3193,11 +3239,19 @@ function exportStoryboardTable(){
   navigator.clipboard.writeText(lines.join('\n')).then(function(){showToast('分镜表已复制');});
 }
 
+var _sbParseTimer=null;
 function applyStoryboardFromGeneration(text,platform){
   platform=platform||activePlatform;
   setActiveShots(parseStoryboardFromText(text,platform));
   renderStoryboardTable();
   updateRefUsedHintStudio();
+}
+function scheduleStoryboardParse(buf,platform){
+  if(_sbParseTimer)clearTimeout(_sbParseTimer);
+  _sbParseTimer=setTimeout(function(){
+    _sbParseTimer=null;
+    applyStoryboardFromGeneration(buf,platform);
+  },400);
 }
 
 function updateRefUsedHintStudio(){
@@ -3214,13 +3268,29 @@ function updateRefUsedHintStudio(){
   }else el.style.display='none';
 }
 
+function updateStudioProgressLabel(running){
+  var wc2=document.getElementById('wordCountStudio');
+  if(!wc2)return;
+  var out=platformOutputs[activePlatform]||'';
+  var n=(storyboards[activePlatform]||[]).length;
+  if(running){
+    wc2.style.color='var(--amber)';
+    wc2.textContent='生成中… '+out.length+' 字'+(n?' · '+n+' 镜':'');
+  }else if(out.length>0||n>0){
+    wc2.style.color='var(--green)';
+    wc2.textContent='✓ 已完成 · '+n+' 镜 · '+out.length+' 字';
+  }else{
+    wc2.style.color='var(--text2)';
+    wc2.textContent='';
+  }
+}
+
 function updateStudioOutputView(){
   var box=document.getElementById('outputBoxStudio');
   if(box)box.textContent=platformOutputs[activePlatform]||'';
   var wc=document.getElementById('studioScriptWordCount');
   if(wc)wc.textContent=(platformOutputs[activePlatform]||'').length?('共'+(platformOutputs[activePlatform].length)+'字'):'';
-  var wc2=document.getElementById('wordCountStudio');
-  if(wc2&&!(platformOutputs[activePlatform]||'').length)wc2.textContent='';
+  updateStudioProgressLabel(false);
 }
 
 function copyStudioOutput(){
@@ -3229,8 +3299,20 @@ function copyStudioOutput(){
 }
 
 function generateActivePlatform(){
-  if(activePlatform==='long')generateBatch1();
-  else generateBatch2();
+  var run=activePlatform==='long'?generateBatch1:generateBatch2;
+  run().catch(function(e){
+    if(e&&e.name!=='AbortError')showToast('分镜生成失败：'+(e.message||e));
+    setStudioState('idle');
+  });
+}
+
+function getScriptContextForStoryboard(){
+  var script=(scriptOutputs[activePlatform]||'').trim();
+  if(!script)return '';
+  // Trim to 2000 chars to avoid crowding the SHOT format instruction
+  var trimmed=script.length>2000?script.slice(0,2000)+'…(truncated)':script;
+  return '\n\n=== REFERENCE SCRIPT (use for narration content — DO NOT output as-is; convert to SHOT| rows) ===\n'
+    +trimmed+'\n=== END REFERENCE SCRIPT ===\n\n';
 }
 
 function resetActivePlatform(){
@@ -3262,23 +3344,43 @@ async function generateBatch1(){
   setStudioState('running');
   var outEl=document.getElementById('outputBoxStudio');
   var wcEl=document.getElementById('wordCountStudio');
+  if(!outEl){showToast('界面异常，请刷新页面');setStudioState('idle');return;}
   outEl.textContent='';
-  document.getElementById('genStatusStudio').textContent='正在生成 YouTube 长视频分镜…';
+  var statusEl=document.getElementById('genStatusStudio');
+  if(statusEl)statusEl.textContent='正在生成 YouTube 长视频分镜…';
   var timer=startTimer('genSubLineStudio',['读取来源…','规划章节结构…','撰写独白…','设计画面分镜…','对齐目标时长 '+formatSec(ps.targetSec)+'…']);
   var ref=buildRefContext();
-  var msg=getTopicContext(ref.textBlock)
-    +'PLATFORM: YouTube long-form, 16:9, target duration ~'+ps.targetSec+' seconds (~'+formatSec(ps.targetSec)+').\n\n'
-    +'OUTPUT — PART A only SHOT lines:\nSHOT|long|镜号|秒数|镜头类型|旁白中文|画面描述|屏幕字幕|备注\n'
-    +'Types: hook, A-roll, B-roll, data, chapter\n'
-    +'PART B after all SHOT lines:\n===SCRIPT===\nFull readable script with chapters.\n\n'
-    +'Rules: 15-40 shots; total duration near '+ps.targetSec+'s; research suggests only; correlation not causation.';
+  var hasScript=(scriptOutputs.long||'').trim().length>100;
+  var scriptCtx=getScriptContextForStoryboard();
+  var msg;
+  if(hasScript){
+    msg=getTopicContext(ref.textBlock)+scriptCtx
+      +'TASK: Convert the REFERENCE SCRIPT above into a storyboard table.\n'
+      +'Output SHOT| lines ONLY in Part A — no prose, no headers, no markdown.\n\n'
+      +'SHOT FORMAT (one line per shot):\nSHOT|long|镜号|秒数|镜头类型|旁白中文|画面描述|屏幕字幕|备注\n'
+      +'Types: hook, A-roll, B-roll, data, chapter\n'
+      +'Example: SHOT|long|1|15|hook|每天一杯咖啡，竟然能降低41%的阿尔茨海默风险|特写咖啡杯，蒸汽升腾|研究数据：降低41%|\n\n'
+      +'Rules: 15-40 shots; total ~'+ps.targetSec+'s; keep narration concise per shot; research suggests only.\n\n'
+      +'After ALL SHOT lines output:\n===SCRIPT===\n(Full readable narration)';
+  }else{
+    msg=getTopicContext(ref.textBlock)
+      +'PLATFORM: YouTube long-form, 16:9, target ~'+ps.targetSec+'s.\n\n'
+      +'Output SHOT| lines ONLY in Part A — no prose, no headers.\n'
+      +'SHOT FORMAT:\nSHOT|long|镜号|秒数|镜头类型|旁白中文|画面描述|屏幕字幕|备注\n'
+      +'Types: hook, A-roll, B-roll, data, chapter\n'
+      +'Example: SHOT|long|1|15|hook|每天一杯咖啡，竟然能降低41%的阿尔茨海默风险|特写咖啡杯|研究：降低41%|\n\n'
+      +'Rules: 15-40 shots; total ~'+ps.targetSec+'s; research suggests only; correlation not causation.\n\n'
+      +'After ALL SHOT lines:\n===SCRIPT===\n(Full readable script with chapters)';
+  }
   var buf='';var dirty=false;
   // throttled DOM update
   function flushOutput(){
     if(!dirty)return;dirty=false;
     outEl.textContent=buf;
     outEl.scrollTop=outEl.scrollHeight;
-    if(wcEl)wcEl.textContent='生成中… '+buf.length+'字';
+    platformOutputs.long=buf;
+    updateStudioProgressLabel(true);
+    scheduleStoryboardParse(buf,'long');
   }
   var rafId=null;
   function schedFlush(){if(!rafId)rafId=requestAnimationFrame(function(){rafId=null;flushOutput();});}
@@ -3293,7 +3395,6 @@ async function generateBatch1(){
     else{res=await fetch(getApiBase().replace(/\/+$/,'')+'/chat/completions',{method:'POST',signal:_studioAbort.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},body:body});}
     if(!res.ok){var er=await res.text();throw new Error('API '+res.status+': '+er.slice(0,150));}
     clearInterval(timer);
-    // hide loading spinner, but keep stop button until stream finishes
     document.getElementById('genLoadingStudio').style.display='none';
     var reader=res.body.getReader();var dec=new TextDecoder();var going=true;
     while(going){
@@ -3306,12 +3407,15 @@ async function generateBatch1(){
       });
     }
     flushOutput();
+    if(_sbParseTimer){clearTimeout(_sbParseTimer);_sbParseTimer=null;}
     platformOutputs.long=buf;outputFull=buf;
     document.getElementById('outputBox1').textContent=buf;
     applyStoryboardFromGeneration(buf,'long');
     updateStudioOutputView();updateRefUsedHintStudio();checkPublishRow();
     var mpb=document.getElementById('markPublishedBtn');if(mpb)mpb.style.display='inline-flex';
     setStudioState('done');
+    var nL=(storyboards.long||[]).length;
+    showToast(nL?'✓ 分镜已完成 · '+nL+' 镜':'✓ 文稿已生成（未识别分镜行，可点「从文稿解析」）');
   }catch(e){
     clearInterval(timer);
     if(e.name!=='AbortError')showToast('生成出错：'+e.message);
@@ -3329,23 +3433,43 @@ async function generateBatch2(){
   setStudioState('running');
   var outEl=document.getElementById('outputBoxStudio');
   var wcEl=document.getElementById('wordCountStudio');
+  if(!outEl){showToast('界面异常，请刷新页面');setStudioState('idle');return;}
   outEl.textContent='';
   var plats=(ps.platforms||['tiktok','shorts']).join(' + ');
-  document.getElementById('genStatusStudio').textContent='正在生成 TikTok / Shorts 分镜…';
+  var statusEl2=document.getElementById('genStatusStudio');
+  if(statusEl2)statusEl2.textContent='正在生成 TikTok / Shorts 分镜…';
   var timer=startTimer('genSubLineStudio',['读取来源…','3秒钩子…','压缩口播至 '+ps.targetSec+' 秒…','竖屏画面…','屏幕字幕…']);
   var ref=buildRefContext();
-  var msg=getTopicContext(ref.textBlock)
-    +'PLATFORM: vertical 9:16 for '+plats+', total ~'+ps.targetSec+' seconds. Strongest hook in first 3 seconds.\n\n'
-    +'OUTPUT — PART A SHOT lines only:\nSHOT|short|镜号|秒数|镜头类型|口播中文|竖屏画面|屏幕大字|备注\n'
-    +'Types: hook, A-roll, text-card. Max 12 chars per spoken sentence.\n'
-    +'PART B:\n===SCRIPT===\nThen ### Image Prompts (3) for 9:16 vertical: Cover, Data, CTA.\n\n'
-    +'Rules: 4-12 shots; correlation not causation; punchy spoken Chinese.';
+  var hasScript2=(scriptOutputs.short||'').trim().length>100;
+  var scriptCtx2=getScriptContextForStoryboard();
+  var msg;
+  if(hasScript2){
+    msg=getTopicContext(ref.textBlock)+scriptCtx2
+      +'TASK: Convert the REFERENCE SCRIPT above into a storyboard table for '+plats+'.\n'
+      +'Output SHOT| lines ONLY in Part A — no prose, no headers, no markdown.\n\n'
+      +'SHOT FORMAT (one line per shot):\nSHOT|short|镜号|秒数|镜头类型|口播中文|竖屏画面|屏幕大字|备注\n'
+      +'Types: hook, A-roll, text-card\n'
+      +'Example: SHOT|short|1|3|hook|你的牙刷里藏着什么|特写：牙刷微距|你的牙刷？|\n\n'
+      +'Rules: 4-12 shots; total ~'+ps.targetSec+'s; max 12 chars per spoken sentence; punchy Chinese.\n\n'
+      +'After ALL SHOT lines output:\n===SCRIPT===\n### Image Prompts (3): Cover, Data, CTA';
+  }else{
+    msg=getTopicContext(ref.textBlock)
+      +'PLATFORM: vertical 9:16 for '+plats+', total ~'+ps.targetSec+'s. Hook in first 3s.\n\n'
+      +'Output SHOT| lines ONLY in Part A — no prose, no headers.\n'
+      +'SHOT FORMAT:\nSHOT|short|镜号|秒数|镜头类型|口播中文|竖屏画面|屏幕大字|备注\n'
+      +'Types: hook, A-roll, text-card\n'
+      +'Example: SHOT|short|1|3|hook|你的牙刷里藏着什么|特写：牙刷微距|你的牙刷？|\n\n'
+      +'Rules: 4-12 shots; max 12 chars per spoken sentence; correlation not causation.\n\n'
+      +'After ALL SHOT lines:\n===SCRIPT===\n### Image Prompts (3): Cover, Data, CTA';
+  }
   var buf='';var dirty=false;
   function flushOutput(){
     if(!dirty)return;dirty=false;
     outEl.textContent=buf;
     outEl.scrollTop=outEl.scrollHeight;
-    if(wcEl)wcEl.textContent='生成中… '+buf.length+'字';
+    platformOutputs.short=buf;
+    updateStudioProgressLabel(true);
+    scheduleStoryboardParse(buf,'short');
   }
   var rafId=null;
   function schedFlush(){if(!rafId)rafId=requestAnimationFrame(function(){rafId=null;flushOutput();});}
@@ -3372,12 +3496,15 @@ async function generateBatch2(){
       });
     }
     flushOutput();
+    if(_sbParseTimer){clearTimeout(_sbParseTimer);_sbParseTimer=null;}
     platformOutputs.short=buf;
     document.getElementById('outputBox2').textContent=buf;
     outputFull=(platformOutputs.long||'')+'\n\n---\n\n'+buf;
     applyStoryboardFromGeneration(buf,'short');
     updateStudioOutputView();updateRefUsedHintStudio();checkPublishRow();
     setStudioState('done');
+    var nS=(storyboards.short||[]).length;
+    showToast(nS?'✓ 分镜已完成 · '+nS+' 镜':'✓ 文稿已生成（未识别分镜行，可点「从文稿解析」）');
   }catch(e){
     clearInterval(timer);
     if(e.name!=='AbortError')showToast('生成出错：'+e.message);
@@ -3489,7 +3616,7 @@ function newContent(){
 /* ═══════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════ */
-initTags();updateKeyStatus();initAppVersion();
+initTags();updateKeyStatus();initAppVersion();setStudioState('idle');
 mountWorkspaceSearch('heroSearchSlot');
 updateTopBar('discover');
 loadPersistedRefFiles().then(function(){
